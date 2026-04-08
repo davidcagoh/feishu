@@ -56,6 +56,17 @@ lob_day = pd.read_parquet(
 )
 ```
 
+## Session Start Routine
+
+At the start of every session, automatically run these steps and report a brief status — no need to ask first:
+
+1. **Sync wiki**: Run `git pull origin main` to pull any updates pushed by the scheduled paper-search agent (runs every Wednesday 5pm ET)
+2. **Evaluate signals**: Run `python eval/run_eval.py --sample` and capture the output
+3. **Health check**: Read `wiki/_index.md`. Check for new papers added by the agent, fix any obvious gaps (missing index entries, broken wikilinks), complete any open tasks marked `[ ]` that are doable now
+4. **Report**: In 4–6 bullet points: what the agent added since last session, eval results summary, any open tasks worth doing today
+
+Signal implementations live in `signals/`. Add new signals there following the existing pattern (each module exports `compute(daily, lob=None) -> pd.DataFrame`). Eval results are written to `wiki/results/`.
+
 ## Key Domain Notes
 
 - **No calendar mapping is given** — `D001`–`D484` are ordinal, not calendar dates. Do not assume day gaps or weekends.
