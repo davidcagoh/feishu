@@ -1,0 +1,6 @@
+# Raw data — too large for git
+data/*_in_sample.parquet
+
+# Keep sample files
+!data/daily_sample.parquet
+!data/lob_sample.parquet
