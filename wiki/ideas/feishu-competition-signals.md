@@ -1,6 +1,6 @@
 # Feishu Competition — Alpha Signal Ideas
 
-Synthesised from the 4 papers + data structure in CLAUDE.md. Ordered roughly by expected implementability and relevance.
+Synthesised from the 7 papers + data structure in CLAUDE.md. Ordered roughly by expected implementability and relevance.
 
 ---
 
@@ -204,10 +204,105 @@ Target: IC > 0.02, IR > 0.3 on the sample data. Validate IC stability over time 
 
 ---
 
+---
+
+## Tier 1 Additions (from new papers, April 2026)
+
+### 10. Market-Cap Normalised OFI (Matched Filter)
+**Source:** [[ofi-matched-filter-normalization-2025]]  
+**Idea:** Normalise daily aggregate signed order flow by `amount` (RMB turnover proxy for market cap) instead of raw volume. Reduces heteroskedastic noise by ~2×.
+
+```python
+lob['ofi_raw'] = lob['bid_volume_1'] - lob['ask_volume_1']
+daily_ofi = lob.groupby(['asset_id', 'trade_day_id'])['ofi_raw'].sum().reset_index()
+daily_ofi = daily_ofi.merge(daily[['asset_id', 'trade_day_id', 'amount']], on=['asset_id', 'trade_day_id'])
+daily_ofi['ofi_mktcap'] = daily_ofi['ofi_raw'] / daily_ofi['amount']
+# Cross-sectional z-score → alpha
+daily_ofi['signal'] = daily_ofi.groupby('trade_day_id')['ofi_mktcap'].transform(
+    lambda x: (x - x.mean()) / (x.std() + 1e-8)
+)
+```
+
+**Expected improvement over Signal #1:** higher IC (theoretical 1.99× SNR gain); same data, no extra complexity.
+
+---
+
+### 11. Alpha191 Mean-Reversion Factors (f046 + f071)
+**Source:** [[cross-market-alpha191-lasso-2026]]  
+**Idea:** Two Chinese short-term trading factors that survive double-selection LASSO in the US market — confirming cross-market robustness. Both are mean-reversion signals anchored to longer-horizon reference levels.
+
+```python
+daily['adj_close'] = daily['close'] * daily['adj_factor']
+
+# Factor 046: price position in 20-day high/low range
+daily['roll_max'] = daily.groupby('asset_id')['adj_close'].transform(lambda x: x.rolling(20).max())
+daily['roll_min'] = daily.groupby('asset_id')['adj_close'].transform(lambda x: x.rolling(20).min())
+daily['f046'] = (daily['adj_close'] - daily['roll_min']) / (daily['roll_max'] - daily['roll_min'] + 1e-8)
+daily['alpha_046'] = daily.groupby('trade_day_id')['f046'].transform(lambda x: -(x - x.mean()) / (x.std() + 1e-8))
+
+# Factor 071: % deviation from 24-day SMA
+daily['sma24'] = daily.groupby('asset_id')['adj_close'].transform(lambda x: x.rolling(24).mean())
+daily['f071'] = (daily['adj_close'] - daily['sma24']) / (daily['sma24'] + 1e-8)
+daily['alpha_071'] = daily.groupby('trade_day_id')['f071'].transform(lambda x: -(x - x.mean()) / (x.std() + 1e-8))
+
+# Composite
+daily['alpha_composite_rev'] = (daily['alpha_046'] + daily['alpha_071']) / 2
+```
+
+**Advantage over Signal #3 (1-day reversal):** uses a multi-period anchor (20-day range / 24-day mean), reducing noise from single-day idiosyncratic jumps.
+
+---
+
+### 12. OU Quasi-Sharpe OFI Signal
+**Source:** [[csi300-ofi-ou-dynamics-2025]]  
+**Idea:** Model per-asset end-of-day OFI as an OU process (rolling 40-day window). The quasi-Sharpe ratio `ρ = (X_t − θ̂) / σ̂_OU` is a principled trading trigger: large |ρ| → OFI far from equilibrium → expect reversion.
+
+```python
+def fit_ou(series):
+    x = series.dropna().values
+    if len(x) < 10: return np.nan, np.nan, np.nan
+    ac = np.clip(np.corrcoef(x[:-1], x[1:])[0, 1], 1e-6, 1-1e-6)
+    kappa = -np.log(ac)
+    theta = x.mean()
+    sigma = x.std() * np.sqrt(2 * kappa)
+    return kappa, theta, sigma
+
+# End-of-day OFI per asset per day (standard imbalance)
+eod_ofi = lob.sort_values('time').groupby(['asset_id', 'trade_day_id']).apply(
+    lambda g: (g['bid_volume_1'].iloc[-1] - g['ask_volume_1'].iloc[-1]) /
+              (g['bid_volume_1'].iloc[-1] + g['ask_volume_1'].iloc[-1] + 1e-8)
+).reset_index(name='ofi')
+
+# Rolling OU fit (40-day window)
+signals = []
+for asset, grp in eod_ofi.groupby('asset_id'):
+    grp = grp.sort_values('trade_day_id').reset_index(drop=True)
+    for i in range(40, len(grp)):
+        window = grp['ofi'].iloc[i-40:i]
+        kappa, theta, sigma = fit_ou(window)
+        if np.isnan(kappa) or sigma < 1e-8: continue
+        x_t = grp['ofi'].iloc[i]
+        rho = (x_t - theta) / (sigma / np.sqrt(2 * kappa + 1e-8))
+        signals.append({'asset_id': asset, 'trade_day_id': grp['trade_day_id'].iloc[i], 'quasi_sharpe': rho})
+
+signal_df = pd.DataFrame(signals)
+# Cross-sectional z-score and use as alpha (signal direction: large positive rho → OFI above equilibrium → price likely reverts)
+signal_df['alpha'] = signal_df.groupby('trade_day_id')['quasi_sharpe'].transform(
+    lambda x: -(x - x.mean()) / (x.std() + 1e-8)  # negate: high OFI → next-day reversal
+)
+```
+
+**Advantage:** self-calibrating threshold — `|ρ|` automatically adapts to each asset's OFI volatility, avoiding fixed imbalance thresholds.
+
+---
+
 ## Priority Order for Implementation
 
 1. LOB imbalance (simplest, strong prior evidence)
-2. Short-term reversal (classic, well-documented)
-3. PCA residual OU signal (moderate complexity, high ceiling)
-4. Regime-conditional LOB signal (adds the regime insight from paper 2)
-5. Depth slope / shape signals (novel, exploratory)
+2. Market-cap normalised OFI (#10) — trivial upgrade over #1, backed by strong theory
+3. Short-term reversal (classic, well-documented)
+4. Alpha191 f046 + f071 composite (#11) — multi-period reversal, cross-market validated
+5. PCA residual OU signal (moderate complexity, high ceiling)
+6. OU quasi-Sharpe OFI signal (#12) — highest information content, moderate complexity
+7. Regime-conditional LOB signal (adds the regime insight from DRL paper)
+8. Depth slope / shape signals (novel, exploratory)

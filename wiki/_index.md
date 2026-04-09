@@ -2,10 +2,10 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-08  
-**Papers indexed:** 4  
+**Last updated:** 2026-04-09  
+**Papers indexed:** 7  
 **Concepts:** 7  
-**Ideas:** 9 signals catalogued
+**Ideas:** 12 signals catalogued
 
 ---
 
@@ -17,6 +17,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [drl-optimal-trading-partial-info](papers/drl-optimal-trading-partial-info.md) | Deep RL for Optimal Trading with Partial Information (Macrì, Jaimungal, Lillo, 2025) | prob-DDPG (regime probs as input) dominates; quality of info > architecture | High — OU signal model, regime conditioning, applies to LOB imbalance |
 | [jump-start-control-scientist](papers/jump-start-control-scientist.md) | A Jump Start to Stock Trading Research (Barmish et al., CDC 2024) | Tutorial: LOB structure, Kelly betting, feedback control framing | Medium — foundational; LOB section directly relevant to Feishu data |
 | [ai-asset-pricing-models](papers/ai-asset-pricing-models.md) | Artificial Intelligence Asset Pricing Models (Kelly et al., Dec 2024) | Nonlinear portfolio transformer achieves Sharpe 4.6 via cross-asset attention | Medium — requires characteristics; adaptable with price-based features |
+| [ofi-matched-filter-normalization-2025](papers/ofi-matched-filter-normalization-2025.md) | Optimal Signal Extraction from Order Flow: A Matched Filter Perspective (Kang, Dec 2025) | Market-cap normalization of OFI yields t=9.65 vs next-day returns; 1.99× SNR vs standard volume norm | High — directly upgrades LOB imbalance signal; normalization recipe for Feishu LOB data |
+| [cross-market-alpha191-lasso-2026](papers/cross-market-alpha191-lasso-2026.md) | Cross-Market Alpha: Testing Short-Term Trading Factors via Double-Selection LASSO (Jan 2026) | 17 of 191 Chinese Alpha191 factors survive in US market; factor 046 (mean reversion ratio) and 071 (24d deviation) most robust | High — identifies universal Chinese A-share short-term signals directly implementable with daily data |
+| [csi300-ofi-ou-dynamics-2025](papers/csi300-ofi-ou-dynamics-2025.md) | Stochastic Price Dynamics in Response to Order Flow Imbalance: CSI 300 (Hu & Zhang, May 2025) | OU-Lévy model outperforms Hawkes for OFI dynamics; quasi-Sharpe ratio derived as principled trading trigger | High — Chinese futures data, upgrades LOB signal with OU parameter estimation and regime-adaptive confidence |
 
 ---
 
@@ -65,6 +68,20 @@ prob-DDPG for latent filtering        Mathematical foundations
     ↓                                       ↓
 Best for: conditioning signals        Best for: understanding data
 on regime state                       and sizing positions
+
+Matched Filter OFI (Kang 2025)       CSI 300 OU-OFI Model (Hu & Zhang 2025)
+    ↓                                       ↓
+HOW to normalize OFI                  HOW to model OFI dynamics
+Market-cap norm → max IC              OU+Lévy → quasi-Sharpe trigger
+    ↘                                 ↙
+      Together: normalize by mktcap, model with OU,
+      trade when quasi-Sharpe exceeds threshold
+
+Cross-Market Alpha191 (2026)
+    ↓
+Which factors from Chinese A-shares survive in efficient US market?
+Factor 046 (range ratio) + 071 (24d deviation) = most universal
+→ These are enhanced short-term reversal signals for Feishu daily data
 ```
 
 ---
@@ -79,6 +96,9 @@ on regime state                       and sizing positions
 - [x] Search for papers on Chinese A-share microstructure → [[chinese-ashore-market]] written
 - [ ] Fetch and read "Innovative Alpha Strategies for Chinese A-Share" (2025) — stable turnover momentum paper
 - [ ] Fetch "Factor models for Chinese A-shares" (Int'l Review of Financial Analysis, 2024)
+- [ ] Implement matched-filter OFI (market-cap normalized) and compare IC vs. standard imbalance → see [[ofi-matched-filter-normalization-2025]]
+- [ ] Test Alpha191 factor 046 (range ratio) and 071 (24d deviation from mean) on daily_sample → see [[cross-market-alpha191-lasso-2026]]
+- [ ] Fit rolling OU to per-asset end-of-day OFI; compute quasi-Sharpe ratio signal → see [[csi300-ofi-ou-dynamics-2025]]
 
 ---
 
