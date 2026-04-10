@@ -106,6 +106,21 @@ Factor 046 (range ratio) + 071 (24d deviation) = most universal
 **Key finding**: LOB IC series are **negatively correlated** with daily signal IC series (r = −0.24 to −0.57).
 They capture orthogonal market regimes. Combining them collapses IC_std from ~0.11 to 0.056 → IR nearly doubles.
 
+## Competition Mechanics (Section 7 of brief)
+
+Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
+
+- Evaluated on **D485–D726** (OOS, ~242 days; data released May 28, 2026; submission deadline June 1)
+- Long-only portfolio, RMB 50M initial capital, min 10 stocks at end of each day
+- Buy at `vwap_0930_0935`; sell at `open` (sell-at-open mode) or `close` (sell-at-close mode) — choose one mode for all OOS days
+- T+1: shares bought on day t not sellable until t+1
+- Costs: buy = max(turnover × 0.0001, 5); sell = max(turnover × 0.0001, 5) + turnover × 0.0005
+- Lot size: 100 shares minimum
+- Submission: CSV with `trade_day_id, asset_id, buy_percentage, sell_percentage`
+
+**Gap vs current work:** We have IC/IR metrics (signal quality) but NOT portfolio CAGR/SR/MDD.
+IC/IR is a necessary but not sufficient condition — daily rebalancing with 6 bps round-trip costs can destroy a high-IR signal.
+
 ## Open Questions / Next Steps
 
 - [x] Check IC correlation matrix across all 5 daily signals → 5 signals = 3 clusters; see `wiki/results/ic_correlation.md`
@@ -119,8 +134,39 @@ They capture orthogonal market regimes. Combining them collapses IC_std from ~0.
 - [x] **Regime classification** (2026-04-10): up-market IR=9.97, down-market IR=6.49; vol-regimes symmetric (7.50/8.49)
 - [x] **OU half-life per asset** (2026-04-10): median HL=0.31 days — daily OFI is i.i.d.; OU dynamics are intraday only
 - [x] **PCA residual signal** (2026-04-10): vol_rev IR 5.01→11.04; composite_full 7.86→12.80 vs idiosyncratic target; LOB degrades (captures systematic flow)
-- [x] Fetch "Innovative Alpha Strategies for Chinese A-Share" (2025) → [[stable-turnover-momentum-2025]] — **next: implement `stable_turnover_momentum` signal**
-- [x] Fetch "Factor models for Chinese A-shares" (2024) → [[factor-models-chinese-ashares-2024]] — E/P+size+market; three-factor alpha = right eval target
+- [x] Fetch "Innovative Alpha Strategies for Chinese A-Share" (2025) → [[stable-turnover-momentum-2025]]
+- [x] Fetch "Factor models for Chinese A-shares" (2024) → [[factor-models-chinese-ashares-2024]]
+
+## Priority Build List (next session)
+
+**CRITICAL — needed before June 1 submission deadline:**
+
+1. **Portfolio simulator** (`eval/backtest.py`)
+   - Replicate §4 mechanics exactly: buy at `vwap_0930_0935`, sell at `open` or `close`
+   - T+1 settlement, lot-size rounding (100 shares), no leverage
+   - Transaction costs: buy = max(turnover × 0.0001, 5); sell = same + turnover × 0.0005
+   - Track daily portfolio value → compute CAGR, annualised Sharpe, MDD
+   - Minimum 10 stocks constraint
+
+2. **Position sizing strategy** (`signals/portfolio.py`)
+   - Convert composite_full z-scores → `buy_percentage` / `sell_percentage`
+   - Decision: top-N stocks equal-weight (start with N=20–30) vs signal-proportional
+   - Decision: rebalancing frequency (daily = high turnover, weekly = lower cost)
+   - Test on in-sample (D001–D484) to get CAGR/SR/MDD estimates
+
+3. **In-sample backtest run**
+   - Run strategy on D001–D484 with both sell-at-open and sell-at-close modes
+   - Sweep N (10, 20, 30, 50) and rebalancing frequency
+   - Pick configuration maximising composite score (0.45 CAGR + 0.30 SR + 0.25 MDD)
+
+4. **Submission generator** (`eval/generate_submission.py`)
+   - Input: OOS signal values (D485–D726) + chosen strategy config
+   - Output: `TEAMID_sell_open.csv` or `TEAMID_sell_close.csv`
+   - Must be ready to run within hours of OOS data release (May 28)
+
+**Signal work (lower priority, do if time permits):**
+- Implement `stable_turnover_momentum` — first new signal type (trend vs reversal)
+- Medium-horizon reversal as E/P proxy
 
 ---
 
