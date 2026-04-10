@@ -3,7 +3,7 @@
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
 **Last updated:** 2026-04-10  
-**Papers indexed:** 7  
+**Papers indexed:** 9  
 **Concepts:** 7  
 **Ideas:** 12 signals catalogued, 9 implemented
 
@@ -20,6 +20,8 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [ofi-matched-filter-normalization-2025](papers/ofi-matched-filter-normalization-2025.md) | Optimal Signal Extraction from Order Flow: A Matched Filter Perspective (Kang, Dec 2025) | Market-cap normalization of OFI yields t=9.65 vs next-day returns; 1.99× SNR vs standard volume norm | High — directly upgrades LOB imbalance signal; normalization recipe for Feishu LOB data |
 | [cross-market-alpha191-lasso-2026](papers/cross-market-alpha191-lasso-2026.md) | Cross-Market Alpha: Testing Short-Term Trading Factors via Double-Selection LASSO (Jan 2026) | 17 of 191 Chinese Alpha191 factors survive in US market; factor 046 (mean reversion ratio) and 071 (24d deviation) most robust | High — identifies universal Chinese A-share short-term signals directly implementable with daily data |
 | [csi300-ofi-ou-dynamics-2025](papers/csi300-ofi-ou-dynamics-2025.md) | Stochastic Price Dynamics in Response to Order Flow Imbalance: CSI 300 (Hu & Zhang, May 2025) | OU-Lévy model outperforms Hawkes for OFI dynamics; quasi-Sharpe ratio derived as principled trading trigger | High — Chinese futures data, upgrades LOB signal with OU parameter estimation and regime-adaptive confidence |
+| [stable-turnover-momentum-2025](papers/stable-turnover-momentum-2025.md) | Innovative Alpha Strategies for Chinese A-Share: Stable Turnover Momentum Enhanced by IVOL (Zhang, Chen & Xu, 2025) | Filters noisy momentum by requiring price + turnover stability, scales by IVOL; survives transaction costs on CSI 300/1000 2019–2024 | High — all inputs available in daily dataset; addresses the known momentum decay in A-shares |
+| [factor-models-chinese-ashares-2024](papers/factor-models-chinese-ashares-2024.md) | Factor Models for Chinese A-Shares (Hanauer, Jansen, Swinkels & Zhou, 2024) | After transaction costs, optimal model = MKT + SMB + E/P only; profitability/investment/B/M don't survive | Medium — E/P not directly available but guides factor selection; three-factor alpha is the right evaluation target |
 
 ---
 
@@ -113,12 +115,12 @@ They capture orthogonal market regimes. Combining them collapses IC_std from ~0.
 - [x] Implement matched-filter OFI (market-cap normalized) → IC=0.006, IR=1.05
 - [x] Test Alpha191 factor 046 and 071 on full data → IC=0.027/IR=2.38, IC=0.035/IR=2.79 (2026-04-10)
 - [x] Search for papers on Chinese A-share microstructure → [[chinese-ashore-market]] written
-- [ ] **Classify days into regimes (vol-based or HMM) and test regime-conditional IC** — composite_full hit=74% but varies; regime conditioning could improve
-- [ ] **Walk-forward / pseudo-OOS validation**: split at D240; refit weights on D001–D240, evaluate D241–D484 — guard against weight overfitting
-- [ ] Estimate OU half-life of LOB imbalance per asset — potential regime indicator
-- [ ] Evaluate whether PCA residual signal improves over raw return signal
-- [ ] Fetch and read "Innovative Alpha Strategies for Chinese A-Share" (2025) — stable turnover momentum paper
-- [ ] Fetch "Factor models for Chinese A-shares" (Int'l Review of Financial Analysis, 2024)
+- [x] **Walk-forward validation** (2026-04-10): OOS IR=8.29; IS-fitted worse (6.22); negative LOB/daily correlation is structural
+- [x] **Regime classification** (2026-04-10): up-market IR=9.97, down-market IR=6.49; vol-regimes symmetric (7.50/8.49)
+- [x] **OU half-life per asset** (2026-04-10): median HL=0.31 days — daily OFI is i.i.d.; OU dynamics are intraday only
+- [x] **PCA residual signal** (2026-04-10): vol_rev IR 5.01→11.04; composite_full 7.86→12.80 vs idiosyncratic target; LOB degrades (captures systematic flow)
+- [x] Fetch "Innovative Alpha Strategies for Chinese A-Share" (2025) → [[stable-turnover-momentum-2025]] — **next: implement `stable_turnover_momentum` signal**
+- [x] Fetch "Factor models for Chinese A-shares" (2024) → [[factor-models-chinese-ashares-2024]] — E/P+size+market; three-factor alpha = right eval target
 
 ---
 
