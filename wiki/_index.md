@@ -118,8 +118,58 @@ Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
 - Lot size: 100 shares minimum
 - Submission: CSV with `trade_day_id, asset_id, buy_percentage, sell_percentage`
 
-**Gap vs current work:** We have IC/IR metrics (signal quality) but NOT portfolio CAGR/SR/MDD.
-IC/IR is a necessary but not sufficient condition — daily rebalancing with 6 bps round-trip costs can destroy a high-IR signal.
+**RESOLVED (2026-04-10 backtest session):** Portfolio simulator built and run. Key discovery below.
+
+## Critical Discovery: IC ≠ Portfolio Alpha (2026-04-10)
+
+**All reversal/IC-based signals fail in actual portfolio construction.** Root cause:
+
+- IC metric uses **close-to-close adjusted returns** → captures overnight gap reversal
+- Execution model forces **buy at vwap_0930_0935** → AFTER the overnight gap has happened
+- Result: reversal stocks that gapped up are bought at premium; then they retrace → catastrophic losses
+
+### Execution IC (signal[t-1] → vwap[t] → open[t+1]) vs IC Metric (close-to-close):
+
+| Signal | IC metric (cc) | Execution IC | Full backtest CAGR |
+|--------|---------------|--------------|-------------------|
+| composite_full (IR=9.64) | +0.034 | +0.011 | **−54%** |
+| volume_reversal (IR=5.01) | +0.034 | +0.011 | **−54%** |
+| lob_imbalance (IR=2.40) | +0.005 | +0.012 | tested w/ sample only |
+| **low_vol 60d (NEW)** | n/a | **+0.054** | **+9.32%** (with liq filter) |
+| stable_turnover_momentum | n/a | **−0.023** | **−47%** (dead) |
+| low_amount_20d | n/a | +0.038 | −3.74% (dead — illiquid tail) |
+
+Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D001–D484).
+
+### Winner: Minimum Volatility Portfolio + Liquidity Filter
+
+`signals/low_vol.py` — selects 100 lowest-volatility stocks (60-day rolling std of adj returns), excluding the bottom 5% by 20-day average `amount`:
+- **CAGR = +9.32%, SR = 0.850, MDD = 13.28%** (sell-at-close, N=100, excl_illiq=5%, D001–D484)
+- Without liquidity filter: CAGR=+8.63%, SR=+0.79, MDD=12.80% (marginal degradation)
+- Outperforms market by ~28%; outperforms all IC-based signals by ~62%
+- Mechanism: avoids limit-down spirals; defensive stocks hold value in bear market
+- Liquidity filter prevents selection of micro-caps that have catastrophic fat-tail drawdowns
+- Low turnover (stable signal) → low transaction cost drag (~0.3% total vs 14% for daily reversal)
+
+### Liquidity filter sweep (excl_illiq, N=100, sell-at-close, D001–D484):
+| excl_illiq | CAGR | SR | MDD | Score |
+|---|---|---|---|---|
+| 0% | +8.63% | 0.79 | 12.80% | 0.244 |
+| **5%** | **+9.32%** | **0.85** | **13.28%** | **0.263** ← best |
+| 10% | +8.22% | 0.76 | 14.02% | 0.230 |
+| 20% | +8.53% | 0.79 | 14.78% | 0.238 |
+
+### Signals Tested and Failed (with Execution IC):
+| Signal | Reason for failure |
+|---|---|
+| stable_turnover_momentum | Price/turnover stability R² is correlated with past momentum, not forward alpha; execution IC = −0.023 |
+| low_amount_20d | Selects most illiquid micro-caps; individual stock blowups dominate (MDD=39.6%) |
+
+### Infrastructure Built:
+- `eval/backtest.py` — full competition-mechanics simulator (T+1, lot-size, costs, metrics)
+- `signals/portfolio.py` — signal → buy/sell percentage converter
+- `signals/low_vol.py` — minimum volatility signal with liquidity filter (best portfolio signal)
+- `eval/generate_submission.py` — outputs competition CSV; ready for OOS run May 28
 
 ## Open Questions / Next Steps
 
@@ -136,37 +186,32 @@ IC/IR is a necessary but not sufficient condition — daily rebalancing with 6 b
 - [x] **PCA residual signal** (2026-04-10): vol_rev IR 5.01→11.04; composite_full 7.86→12.80 vs idiosyncratic target; LOB degrades (captures systematic flow)
 - [x] Fetch "Innovative Alpha Strategies for Chinese A-Share" (2025) → [[stable-turnover-momentum-2025]]
 - [x] Fetch "Factor models for Chinese A-shares" (2024) → [[factor-models-chinese-ashares-2024]]
+- [x] **Portfolio backtester built** (2026-04-10): `eval/backtest.py` with exact competition mechanics
+- [x] **Critical discovery** (2026-04-10): IC-based signals fail in execution (reversal alpha is overnight gap, bought AFTER gap). Execution IC for composite_full = +0.011; top-20 actual alpha = −49%/yr
+- [x] **Minimum volatility strategy** (2026-04-10): `signals/low_vol.py`, 60-day window, N=100, sell-at-close → CAGR=+8.61%, SR=0.79, MDD=12.80%. Best in-sample result
+- [x] **Submission generator** (2026-04-10): `eval/generate_submission.py` ready for OOS run May 28
+- [x] **stable_turnover_momentum** (2026-04-10): Implemented from Zhang et al. 2025. Failed: execution IC=−0.023, CAGR=−47%. Price/turnover stability does not predict forward execution returns in this regime.
+- [x] **Liquidity filter** (2026-04-10): Excluding bottom 5% by 20d amount → CAGR=+9.32%, SR=+0.85 (+0.7% CAGR, +0.06 SR). Incorporated into `signals/low_vol.py` (excl_illiq=0.05 default).
+- [x] **low_amount_20d** (2026-04-10): High execution IC (+0.038) but portfolio CAGR=−3.74%, MDD=39.6%. Root cause: selects micro-caps with fat-tail limit-down risk. Correct intuition (illiquidity matters) but wrong direction — exclude bottom tail, don't select it.
 
 ## Priority Build List (next session)
 
-**CRITICAL — needed before June 1 submission deadline:**
+**DONE — all critical infrastructure built:**
+- [x] `eval/backtest.py` — portfolio simulator with full competition mechanics
+- [x] `signals/portfolio.py` — signal → buy/sell percentage converter
+- [x] `signals/low_vol.py` — minimum volatility signal + 5% liquidity filter (best portfolio signal)
+- [x] `eval/generate_submission.py` — competition CSV generator (run on May 28 with OOS data)
+- [x] In-sample backtest: **CAGR=+9.32%, SR=0.850, MDD=13.28%** (low_vol, N=100, excl_illiq=5%, sell-at-close)
 
-1. **Portfolio simulator** (`eval/backtest.py`)
-   - Replicate §4 mechanics exactly: buy at `vwap_0930_0935`, sell at `open` or `close`
-   - T+1 settlement, lot-size rounding (100 shares), no leverage
-   - Transaction costs: buy = max(turnover × 0.0001, 5); sell = same + turnover × 0.0005
-   - Track daily portfolio value → compute CAGR, annualised Sharpe, MDD
-   - Minimum 10 stocks constraint
+**Remaining before June 1:**
+1. (May 28) Run `python eval/generate_submission.py --daily data/daily_data_oos.parquet` when OOS data releases
+2. Verify CSV format matches competition brief §4 exactly
+3. Submit `submissions/submission_sell_close.csv`
 
-2. **Position sizing strategy** (`signals/portfolio.py`)
-   - Convert composite_full z-scores → `buy_percentage` / `sell_percentage`
-   - Decision: top-N stocks equal-weight (start with N=20–30) vs signal-proportional
-   - Decision: rebalancing frequency (daily = high turnover, weekly = lower cost)
-   - Test on in-sample (D001–D484) to get CAGR/SR/MDD estimates
-
-3. **In-sample backtest run**
-   - Run strategy on D001–D484 with both sell-at-open and sell-at-close modes
-   - Sweep N (10, 20, 30, 50) and rebalancing frequency
-   - Pick configuration maximising composite score (0.45 CAGR + 0.30 SR + 0.25 MDD)
-
-4. **Submission generator** (`eval/generate_submission.py`)
-   - Input: OOS signal values (D485–D726) + chosen strategy config
-   - Output: `TEAMID_sell_open.csv` or `TEAMID_sell_close.csv`
-   - Must be ready to run within hours of OOS data release (May 28)
-
-**Signal work (lower priority, do if time permits):**
-- Implement `stable_turnover_momentum` — first new signal type (trend vs reversal)
-- Medium-horizon reversal as E/P proxy
+**Optional improvements if time permits (diminishing returns):**
+- Run full-data LOB backtest for `lob_imbalance` (execution IC=+0.012, orthogonal to low_vol) — could combine for marginal uplift
+- Stress-test OOS regime: low_vol underperforms in bull markets (high-beta growth stocks dominate)
+- Verify sector concentration of the 100-stock portfolio (likely overweight utilities/financials)
 
 ---
 

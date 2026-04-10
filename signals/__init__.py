@@ -14,6 +14,8 @@ from signals import (
     alpha191_071,
     composite_daily,
     composite_full,
+    low_vol,
+    stable_turnover_momentum,
 )
 
 REGISTRY = {
@@ -27,4 +29,6 @@ REGISTRY = {
     "alpha191_071": alpha191_071,
     "composite_daily": composite_daily,
     "composite_full": composite_full,
+    "low_vol": low_vol,
+    "stable_turnover_momentum": stable_turnover_momentum,
 }
