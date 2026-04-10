@@ -29,17 +29,37 @@ from signals import REGISTRY
 
 # ── Data loading ─────────────────────────────────────────────────────────────
 
-def load_data(sample: bool = True) -> tuple[pd.DataFrame, pd.DataFrame]:
+def load_data(sample: bool = True, with_lob: bool = False) -> tuple[pd.DataFrame, pd.DataFrame]:
     root = Path(__file__).parent.parent / "data"
     if sample:
         daily_path = root / "daily_sample.parquet"
         lob_path = root / "lob_sample.parquet"
-    else:
-        daily_path = root / "daily_data_in_sample.parquet"
-        lob_path = None  # never load LOB unfiltered
+        daily = pd.read_parquet(daily_path)
+        lob = pd.read_parquet(lob_path) if lob_path.exists() else pd.DataFrame()
+        return daily, lob
 
+    daily_path = root / "daily_data_in_sample.parquet"
     daily = pd.read_parquet(daily_path)
-    lob = pd.read_parquet(lob_path) if lob_path and lob_path.exists() else pd.DataFrame()
+
+    if not with_lob:
+        return daily, pd.DataFrame()
+
+    # Load LOB day-by-day to avoid pulling 24M rows at once
+    lob_path = root / "lob_data_in_sample.parquet"
+    if not lob_path.exists():
+        print("  [warn] lob_data_in_sample.parquet not found — skipping LOB signals")
+        return daily, pd.DataFrame()
+
+    all_days = sorted(daily["trade_day_id"].unique())
+    print(f"  Loading LOB day-by-day ({len(all_days)} days)...", flush=True)
+    chunks = []
+    for i, day in enumerate(all_days, 1):
+        chunk = pd.read_parquet(lob_path, filters=[("trade_day_id", "==", day)])
+        chunks.append(chunk)
+        if i % 50 == 0:
+            print(f"    {i}/{len(all_days)} days loaded", flush=True)
+    lob = pd.concat(chunks, ignore_index=True)
+    print(f"  LOB loaded: {len(lob):,} rows", flush=True)
 
     return daily, lob
 
@@ -193,12 +213,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--sample", action="store_true", default=False,
                         help="Use sample data (fast, 20 days)")
+    parser.add_argument("--lob", action="store_true", default=False,
+                        help="Load full LOB data day-by-day (~4GB RAM, slow)")
     parser.add_argument("--signal", default=None,
                         help="Evaluate a single signal by name")
     args = parser.parse_args()
 
     print("Loading data...", flush=True)
-    daily, lob = load_data(sample=args.sample)
+    daily, lob = load_data(sample=args.sample, with_lob=args.sample or args.lob)
     returns = compute_returns(daily)
 
     signals_to_run = (

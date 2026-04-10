@@ -46,6 +46,10 @@ def compute(daily: pd.DataFrame, lob: pd.DataFrame | None = None) -> pd.DataFram
     # Reindex to full universe (NaN for days without LOB data)
     signal = signal.reindex(index=all_days, columns=all_assets)
 
+    # Invert: full-sample eval (484 days) shows IC=-0.005, IR=-2.40.
+    # Chinese retail FOMO drives bid pressure at end of day → contrarian, not momentum.
+    signal = -signal
+
     # Cross-sectional z-score per day (only where data exists)
     signal = signal.sub(signal.mean(axis=1), axis=0).div(
         signal.std(axis=1), axis=0

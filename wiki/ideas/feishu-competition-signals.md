@@ -298,11 +298,32 @@ signal_df['alpha'] = signal_df.groupby('trade_day_id')['quasi_sharpe'].transform
 
 ## Priority Order for Implementation
 
-1. LOB imbalance (simplest, strong prior evidence)
-2. Market-cap normalised OFI (#10) — trivial upgrade over #1, backed by strong theory
-3. Short-term reversal (classic, well-documented)
-4. Alpha191 f046 + f071 composite (#11) — multi-period reversal, cross-market validated
-5. PCA residual OU signal (moderate complexity, high ceiling)
-6. OU quasi-Sharpe OFI signal (#12) — highest information content, moderate complexity
-7. Regime-conditional LOB signal (adds the regime insight from DRL paper)
-8. Depth slope / shape signals (novel, exploratory)
+1. ~~LOB imbalance~~ ✅ implemented; inverted (contrarian), needs LOB for full eval
+2. ~~Market-cap normalised OFI~~ ✅ implemented; inverted, needs LOB for full eval
+3. ~~Short-term reversal~~ ✅ IC=0.019, IR=1.84
+4. ~~Alpha191 f046 + f071~~ ✅ IC=0.027/IR=2.38 and IC=0.035/IR=2.79 (2026-04-10, full 484-day)
+5. **Signal combination** — next priority; IC correlation matrix + composite signal
+6. PCA residual OU signal (moderate complexity, high ceiling)
+7. OU quasi-Sharpe OFI signal (#12) — highest information content, moderate complexity
+8. Regime-conditional LOB signal (adds the regime insight from DRL paper)
+9. Depth slope / shape signals (novel, exploratory)
+
+---
+
+## Full-Sample Eval Results (2026-04-10, 484 days)
+
+| Signal | Mean IC | IC Std | IR (ann.) | Hit Rate |
+|--------|---------|--------|-----------|----------|
+| volume_reversal | 0.0339 | 0.1074 | **5.01** | 64% |
+| alpha191_071 | 0.0346 | 0.1966 | 2.79 | 57% |
+| price_to_vwap | 0.0270 | 0.1664 | 2.58 | 58% |
+| alpha191_046 | 0.0267 | 0.1781 | 2.38 | 56% |
+| short_term_reversal | 0.0191 | 0.1652 | 1.84 | 57% |
+| lob_imbalance | — | — | — | — | (requires LOB) |
+| ofi_matched_filter | — | — | — | — | (requires LOB) |
+
+**Key observations:**
+- `volume_reversal` has the highest IR (5.01) due to its low IC std (0.107 vs 0.165–0.197 for others) — more consistent day-to-day
+- `alpha191_071` (24d SMA deviation) matches `volume_reversal` in raw IC (0.035) but with higher IC std → good diversifier candidate
+- All five daily signals are positive — mean-reversion dominates Chinese A-shares as expected
+- Next step: compute IC cross-correlations; if <0.3, combine into equal-weight composite

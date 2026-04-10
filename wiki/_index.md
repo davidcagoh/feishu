@@ -2,10 +2,10 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-09  
+**Last updated:** 2026-04-10  
 **Papers indexed:** 7  
 **Concepts:** 7  
-**Ideas:** 12 signals catalogued
+**Ideas:** 12 signals catalogued, 7 implemented
 
 ---
 
@@ -88,17 +88,17 @@ Factor 046 (range ratio) + 071 (24d deviation) = most universal
 
 ## Open Questions / Next Steps
 
-- [ ] Run IC/IR evaluation of LOB imbalance signal on `data/lob_sample.parquet`
-- [ ] Test short-term reversal IC on `data/daily_sample.parquet`
 - [ ] Estimate OU half-life of LOB imbalance per asset
 - [ ] Classify days into regimes (vol-based or HMM) and test regime-conditional IC
 - [ ] Evaluate whether PCA residual signal improves over raw return signal
 - [x] Search for papers on Chinese A-share microstructure → [[chinese-ashore-market]] written
 - [ ] Fetch and read "Innovative Alpha Strategies for Chinese A-Share" (2025) — stable turnover momentum paper
 - [ ] Fetch "Factor models for Chinese A-shares" (Int'l Review of Financial Analysis, 2024)
-- [ ] Implement matched-filter OFI (market-cap normalized) and compare IC vs. standard imbalance → see [[ofi-matched-filter-normalization-2025]]
-- [ ] Test Alpha191 factor 046 (range ratio) and 071 (24d deviation from mean) on daily_sample → see [[cross-market-alpha191-lasso-2026]]
+- [x] Implement matched-filter OFI (market-cap normalized) → done; IC≈+0.006 post-inversion (needs LOB for full eval)
+- [x] Test Alpha191 factor 046 and 071 on full data → IC=0.027/IR=2.38, IC=0.035/IR=2.79 (2026-04-10)
 - [ ] Fit rolling OU to per-asset end-of-day OFI; compute quasi-Sharpe ratio signal → see [[csi300-ofi-ou-dynamics-2025]]
+- [ ] Check IC correlation matrix across all 5 daily signals — prioritise signal combination
+- [ ] Combine volume_reversal + alpha191_071 (both IR>2.5) — build composite, retest IR
 
 ---
 
