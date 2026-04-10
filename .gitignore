@@ -4,3 +4,8 @@ data/*_in_sample.parquet
 # Keep sample files
 !data/daily_sample.parquet
 !data/lob_sample.parquet
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
