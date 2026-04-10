@@ -105,7 +105,8 @@ Factor 046 (range ratio) + 071 (24d deviation) = most universal
 ## Adding New Papers
 
 When a new paper is added:
-1. Extract full text, write structured summary to `papers/` using the same template
+1. Extract full text, write structured summary to `papers/` using the same template (includes `## Implementable Signal` section)
 2. Add or update concept articles with new insights/connections
-3. Update the `ideas/feishu-competition-signals.md` with actionable ideas
-4. Add entry to this `_index.md`
+3. Update `ideas/feishu-competition-signals.md` with actionable ideas (mark status: `[ ] untested`)
+4. Update `learnings.md` — confirm/refute open hypotheses, or add new ones
+5. Add entry to this `_index.md`
