@@ -5,7 +5,7 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 **Last updated:** 2026-04-10  
 **Papers indexed:** 7  
 **Concepts:** 7  
-**Ideas:** 12 signals catalogued, 7 implemented
+**Ideas:** 12 signals catalogued, 9 implemented
 
 ---
 
@@ -86,19 +86,39 @@ Factor 046 (range ratio) + 071 (24d deviation) = most universal
 
 ---
 
+## Signal Leaderboard (2026-04-10, full 484-day eval)
+
+| Signal | Mean IC | IC Std | IR (ann.) | Hit Rate |
+|--------|---------|--------|-----------|----------|
+| **composite_full** (LOB+daily) | 0.0341 | **0.056** | **9.64** | **74%** |
+| composite_daily | 0.0361 | 0.113 | 5.08 | 66% |
+| volume_reversal | 0.0339 | 0.107 | 5.01 | 64% |
+| alpha191_071 | 0.0346 | 0.197 | 2.79 | 57% |
+| price_to_vwap | 0.0270 | 0.166 | 2.58 | 58% |
+| lob_imbalance | 0.0045 | 0.030 | 2.40 | 59% |
+| alpha191_046 | 0.0267 | 0.178 | 2.38 | 56% |
+| ofi_ou | 0.0081 | 0.072 | 1.77 | 55% |
+| short_term_reversal | 0.0191 | 0.165 | 1.84 | 57% |
+| ofi_matched_filter | 0.0059 | 0.089 | 1.05 | 53% |
+
+**Key finding**: LOB IC series are **negatively correlated** with daily signal IC series (r = −0.24 to −0.57).
+They capture orthogonal market regimes. Combining them collapses IC_std from ~0.11 to 0.056 → IR nearly doubles.
+
 ## Open Questions / Next Steps
 
-- [ ] Estimate OU half-life of LOB imbalance per asset
-- [ ] Classify days into regimes (vol-based or HMM) and test regime-conditional IC
-- [ ] Evaluate whether PCA residual signal improves over raw return signal
+- [x] Check IC correlation matrix across all 5 daily signals → 5 signals = 3 clusters; see `wiki/results/ic_correlation.md`
+- [x] Combine volume_reversal + alpha191_071 → composite_daily IR=5.08 (optimal: 85% vol_rev + 15% ptv)
+- [x] Full LOB eval for lob_imbalance (inverted) → IC=0.0045, IR=2.40
+- [x] Fit rolling OU to per-asset end-of-day OFI; compute quasi-Sharpe ratio → ofi_ou IR=1.77
+- [x] Implement matched-filter OFI (market-cap normalized) → IC=0.006, IR=1.05
+- [x] Test Alpha191 factor 046 and 071 on full data → IC=0.027/IR=2.38, IC=0.035/IR=2.79 (2026-04-10)
 - [x] Search for papers on Chinese A-share microstructure → [[chinese-ashore-market]] written
+- [ ] **Classify days into regimes (vol-based or HMM) and test regime-conditional IC** — composite_full hit=74% but varies; regime conditioning could improve
+- [ ] **Walk-forward / pseudo-OOS validation**: split at D240; refit weights on D001–D240, evaluate D241–D484 — guard against weight overfitting
+- [ ] Estimate OU half-life of LOB imbalance per asset — potential regime indicator
+- [ ] Evaluate whether PCA residual signal improves over raw return signal
 - [ ] Fetch and read "Innovative Alpha Strategies for Chinese A-Share" (2025) — stable turnover momentum paper
 - [ ] Fetch "Factor models for Chinese A-shares" (Int'l Review of Financial Analysis, 2024)
-- [x] Implement matched-filter OFI (market-cap normalized) → done; IC≈+0.006 post-inversion (needs LOB for full eval)
-- [x] Test Alpha191 factor 046 and 071 on full data → IC=0.027/IR=2.38, IC=0.035/IR=2.79 (2026-04-10)
-- [ ] Fit rolling OU to per-asset end-of-day OFI; compute quasi-Sharpe ratio signal → see [[csi300-ofi-ou-dynamics-2025]]
-- [ ] Check IC correlation matrix across all 5 daily signals — prioritise signal combination
-- [ ] Combine volume_reversal + alpha191_071 (both IR>2.5) — build composite, retest IR
 
 ---
 

@@ -7,12 +7,15 @@
 | Signal | Mean IC | IC Std | IR (ann.) | Hit Rate | Days |
 |--------|---------|--------|-----------|----------|------|
 | short_term_reversal | 0.0191 | 0.1652 | 1.84 | 57% | 482 |
-| lob_imbalance | N/A | N/A | N/A | N/A | 0 |
+| lob_imbalance | 0.0045 | 0.0296 | 2.40 | 59% | 483 |
 | price_to_vwap | 0.0270 | 0.1664 | 2.58 | 58% | 483 |
 | volume_reversal | 0.0339 | 0.1074 | 5.01 | 64% | 478 |
-| ofi_matched_filter | N/A | N/A | N/A | N/A | 0 |
+| ofi_matched_filter | 0.0059 | 0.0894 | 1.05 | 53% | 483 |
+| ofi_ou | 0.0081 | 0.0721 | 1.77 | 55% | 463 |
 | alpha191_046 | 0.0267 | 0.1781 | 2.38 | 56% | 474 |
 | alpha191_071 | 0.0346 | 0.1966 | 2.79 | 57% | 472 |
+| composite_daily | 0.0361 | 0.1128 | 5.08 | 66% | 478 |
+| composite_full | 0.0341 | 0.0561 | 9.64 | 74% | 463 |
 
 ## Interpretation
 
@@ -22,7 +25,7 @@
 
 ## Next Steps
 
-- Promising signals to develop further: **price_to_vwap, volume_reversal, alpha191_046, alpha191_071**
+- Promising signals to develop further: **price_to_vwap, volume_reversal, alpha191_046, alpha191_071, composite_daily, composite_full**
   - Test on full dataset for reliable IC estimates
   - Try combining signals (IC correlation < 0.3 → good diversification)
 - See `wiki/ideas/feishu-competition-signals.md` for more signal ideas
