@@ -16,6 +16,7 @@ from signals import (
     composite_full,
     low_vol,
     stable_turnover_momentum,
+    vol_managed,
 )
 
 REGISTRY = {
@@ -31,4 +32,5 @@ REGISTRY = {
     "composite_full": composite_full,
     "low_vol": low_vol,
     "stable_turnover_momentum": stable_turnover_momentum,
+    "vol_managed": vol_managed,
 }

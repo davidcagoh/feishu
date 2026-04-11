@@ -2,10 +2,10 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-10  
-**Papers indexed:** 9  
+**Last updated:** 2026-04-11  
+**Papers indexed:** 11  
 **Concepts:** 7  
-**Ideas:** 12 signals catalogued, 9 implemented
+**Ideas:** 15 signals catalogued, 10 implemented
 
 ---
 
@@ -22,6 +22,8 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [csi300-ofi-ou-dynamics-2025](papers/csi300-ofi-ou-dynamics-2025.md) | Stochastic Price Dynamics in Response to Order Flow Imbalance: CSI 300 (Hu & Zhang, May 2025) | OU-Lévy model outperforms Hawkes for OFI dynamics; quasi-Sharpe ratio derived as principled trading trigger | High — Chinese futures data, upgrades LOB signal with OU parameter estimation and regime-adaptive confidence |
 | [stable-turnover-momentum-2025](papers/stable-turnover-momentum-2025.md) | Innovative Alpha Strategies for Chinese A-Share: Stable Turnover Momentum Enhanced by IVOL (Zhang, Chen & Xu, 2025) | Filters noisy momentum by requiring price + turnover stability, scales by IVOL; survives transaction costs on CSI 300/1000 2019–2024 | High — all inputs available in daily dataset; addresses the known momentum decay in A-shares |
 | [factor-models-chinese-ashares-2024](papers/factor-models-chinese-ashares-2024.md) | Factor Models for Chinese A-Shares (Hanauer, Jansen, Swinkels & Zhou, 2024) | After transaction costs, optimal model = MKT + SMB + E/P only; profitability/investment/B/M don't survive | Medium — E/P not directly available but guides factor selection; three-factor alpha is the right evaluation target |
+| [volatility-effect-china-ashare-2021](papers/volatility-effect-china-ashare-2021.md) | The Volatility Effect in China (Blitz, Hanauer, van Vliet, 2021) | D1–D10 alpha spread 16.1% annualised; VOL factor Sharpe 0.51 vs 0.00; robust in large-cap liquid subset | High — foundational empirical support for low_vol.py; motivates longer lookback windows (120–252d vs current 60d) |
+| [vol-managed-portfolios-china-2024](papers/vol-managed-portfolios-china-2024.md) | Volatility-Managed Portfolios in the Chinese Equity Market (Wang & Li, 2024) | VMP OOS Sharpe ~1.50 vs ~0.99 unmanaged; bull-market scaling via 1/σ² weights; stronger in bear/high-sentiment regimes | High — provides price-only regime-conditioning overlay for low_vol; scale exposure by inverse realised variance to improve bull-market performance |
 
 ---
 
@@ -44,7 +46,7 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 
 | File | Contents |
 |------|---------|
-| [feishu-competition-signals](ideas/feishu-competition-signals.md) | 9 alpha signal ideas, tiered by complexity; evaluation code; priority order |
+| [feishu-competition-signals](ideas/feishu-competition-signals.md) | 12 alpha signal ideas, tiered by complexity; evaluation code; priority order; full-sample results |
 
 ---
 
@@ -88,6 +90,20 @@ Factor 046 (range ratio) + 071 (24d deviation) = most universal
 
 ---
 
+## Results
+
+| File | Contents |
+|------|---------|
+| [sector_concentration](results/sector_concentration.md) | low_vol portfolio concentration: 12 core holdings, 7 effective independent bets, within-cluster r=0.43 |
+| [ic_correlation](results/ic_correlation.md) | IC correlation matrix across daily signals; 3 clusters identified |
+| [walk_forward](results/walk_forward.md) | Walk-forward validation: OOS IR=8.29 |
+| [regime_analysis](results/regime_analysis.md) | Up-market IR=9.97, down-market IR=6.49 |
+| [pca_residual](results/pca_residual.md) | PCA residual signal: vol_rev IR 5.01→11.04 |
+| [ou_halflife](results/ou_halflife.md) | Median OU half-life = 0.31 days — daily OFI is i.i.d. |
+| [vol_managed_backtest](results/vol_managed_backtest.md) | Vol-managed overlay on low_vol: CAGR=9.04%, SR=0.981, MDD=9.38%, Score=0.3116 (+2.3% vs baseline) |
+
+---
+
 ## Signal Leaderboard (2026-04-10, full 484-day eval)
 
 | Signal | Mean IC | IC Std | IR (ann.) | Hit Rate |
@@ -112,13 +128,11 @@ Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
 
 - Evaluated on **D485–D726** (OOS, ~242 days; data released May 28, 2026; submission deadline June 1)
 - Long-only portfolio, RMB 50M initial capital, min 10 stocks at end of each day
-- Buy at `vwap_0930_0935`; sell at `open` (sell-at-open mode) or `close` (sell-at-close mode) — choose one mode for all OOS days
+- Buy at `vwap_0930_0935`; sell at `close` (sell-at-close mode chosen for submission)
 - T+1: shares bought on day t not sellable until t+1
 - Costs: buy = max(turnover × 0.0001, 5); sell = max(turnover × 0.0001, 5) + turnover × 0.0005
 - Lot size: 100 shares minimum
 - Submission: CSV with `trade_day_id, asset_id, buy_percentage, sell_percentage`
-
-**RESOLVED (2026-04-10 backtest session):** Portfolio simulator built and run. Key discovery below.
 
 ## Critical Discovery: IC ≠ Portfolio Alpha (2026-04-10)
 
@@ -141,21 +155,30 @@ Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
 
 Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D001–D484).
 
-### Winner: Minimum Volatility Portfolio + Liquidity Filter
+### Winner: Vol-Managed Minimum Volatility Portfolio (2026-04-11 update)
 
-`signals/low_vol.py` — selects 100 lowest-volatility stocks (60-day rolling std of adj returns), excluding the bottom 5% by 20-day average `amount`:
-- **CAGR = +9.32%, SR = 0.850, MDD = 13.28%** (sell-at-close, N=100, excl_illiq=5%, D001–D484)
-- Without liquidity filter: CAGR=+8.63%, SR=+0.79, MDD=12.80% (marginal degradation)
-- Outperforms market by ~28%; outperforms all IC-based signals by ~62%
-- Mechanism: avoids limit-down spirals; defensive stocks hold value in bear market
-- Liquidity filter prevents selection of micro-caps that have catastrophic fat-tail drawdowns
-- Low turnover (stable signal) → low transaction cost drag (~0.3% total vs 14% for daily reversal)
+`signals/vol_managed.py` — Wang & Li (2024) overlay on low_vol: blanks signal on days where 20-day rolling market variance exceeds 3× its in-sample median. Backtest skips rebalancing on those days, holding the current low-vol portfolio.
+
+**Best portfolio configuration (sell-at-open, N=20, D001–D484):**
+
+| Signal | CAGR | SR | MDD | Score |
+|--------|------|----|-----|-------|
+| **vol_managed** (w=20, th=3.0) | **9.04%** | **0.981** | **9.38%** | **0.3116** ← new best |
+| low_vol (baseline) | 8.81% | 0.961 | 9.38% | 0.3045 |
+
+- Score improvement: +0.0071 (+2.3% relative) over low_vol baseline
+- MDD unchanged — the drawdown in this dataset is structural, not vol-spike driven
+- SR improvement of +0.020 is the primary driver: fewer forced rebalances on bad days
+
+### Previous best (sell-at-close, N=100, D001–D484):
+- `low_vol`: CAGR=+9.32%, SR=0.850, MDD=13.28% (reported 2026-04-10)
+- Note: sell-at-close N=100 and sell-at-open N=20 are different regimes; vol_managed does not improve the N=100 configuration meaningfully.
 
 ### Liquidity filter sweep (excl_illiq, N=100, sell-at-close, D001–D484):
 | excl_illiq | CAGR | SR | MDD | Score |
 |---|---|---|---|---|
 | 0% | +8.63% | 0.79 | 12.80% | 0.244 |
-| **5%** | **+9.32%** | **0.85** | **13.28%** | **0.263** ← best |
+| **5%** | **+9.32%** | **0.85** | **13.28%** | **0.263** ← best (close mode) |
 | 10% | +8.22% | 0.76 | 14.02% | 0.230 |
 | 20% | +8.53% | 0.79 | 14.78% | 0.238 |
 
@@ -168,50 +191,52 @@ Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D0
 ### Infrastructure Built:
 - `eval/backtest.py` — full competition-mechanics simulator (T+1, lot-size, costs, metrics)
 - `signals/portfolio.py` — signal → buy/sell percentage converter
-- `signals/low_vol.py` — minimum volatility signal with liquidity filter (best portfolio signal)
+- `signals/low_vol.py` — minimum volatility signal with liquidity filter
+- `signals/vol_managed.py` — Wang & Li (2024) vol-managed overlay on low_vol (**current best signal**)
 - `eval/generate_submission.py` — outputs competition CSV; ready for OOS run May 28
 
-## Open Questions / Next Steps
+## Remaining before June 1
 
-- [x] Check IC correlation matrix across all 5 daily signals → 5 signals = 3 clusters; see `wiki/results/ic_correlation.md`
-- [x] Combine volume_reversal + alpha191_071 → composite_daily IR=5.08 (optimal: 85% vol_rev + 15% ptv)
-- [x] Full LOB eval for lob_imbalance (inverted) → IC=0.0045, IR=2.40
-- [x] Fit rolling OU to per-asset end-of-day OFI; compute quasi-Sharpe ratio → ofi_ou IR=1.77
-- [x] Implement matched-filter OFI (market-cap normalized) → IC=0.006, IR=1.05
-- [x] Test Alpha191 factor 046 and 071 on full data → IC=0.027/IR=2.38, IC=0.035/IR=2.79 (2026-04-10)
-- [x] Search for papers on Chinese A-share microstructure → [[chinese-ashore-market]] written
-- [x] **Walk-forward validation** (2026-04-10): OOS IR=8.29; IS-fitted worse (6.22); negative LOB/daily correlation is structural
-- [x] **Regime classification** (2026-04-10): up-market IR=9.97, down-market IR=6.49; vol-regimes symmetric (7.50/8.49)
-- [x] **OU half-life per asset** (2026-04-10): median HL=0.31 days — daily OFI is i.i.d.; OU dynamics are intraday only
-- [x] **PCA residual signal** (2026-04-10): vol_rev IR 5.01→11.04; composite_full 7.86→12.80 vs idiosyncratic target; LOB degrades (captures systematic flow)
-- [x] Fetch "Innovative Alpha Strategies for Chinese A-Share" (2025) → [[stable-turnover-momentum-2025]]
-- [x] Fetch "Factor models for Chinese A-shares" (2024) → [[factor-models-chinese-ashares-2024]]
-- [x] **Portfolio backtester built** (2026-04-10): `eval/backtest.py` with exact competition mechanics
-- [x] **Critical discovery** (2026-04-10): IC-based signals fail in execution (reversal alpha is overnight gap, bought AFTER gap). Execution IC for composite_full = +0.011; top-20 actual alpha = −49%/yr
-- [x] **Minimum volatility strategy** (2026-04-10): `signals/low_vol.py`, 60-day window, N=100, sell-at-close → CAGR=+8.61%, SR=0.79, MDD=12.80%. Best in-sample result
-- [x] **Submission generator** (2026-04-10): `eval/generate_submission.py` ready for OOS run May 28
-- [x] **stable_turnover_momentum** (2026-04-10): Implemented from Zhang et al. 2025. Failed: execution IC=−0.023, CAGR=−47%. Price/turnover stability does not predict forward execution returns in this regime.
-- [x] **Liquidity filter** (2026-04-10): Excluding bottom 5% by 20d amount → CAGR=+9.32%, SR=+0.85 (+0.7% CAGR, +0.06 SR). Incorporated into `signals/low_vol.py` (excl_illiq=0.05 default).
-- [x] **low_amount_20d** (2026-04-10): High execution IC (+0.038) but portfolio CAGR=−3.74%, MDD=39.6%. Root cause: selects micro-caps with fat-tail limit-down risk. Correct intuition (illiquidity matters) but wrong direction — exclude bottom tail, don't select it.
-
-## Priority Build List (next session)
-
-**DONE — all critical infrastructure built:**
-- [x] `eval/backtest.py` — portfolio simulator with full competition mechanics
-- [x] `signals/portfolio.py` — signal → buy/sell percentage converter
-- [x] `signals/low_vol.py` — minimum volatility signal + 5% liquidity filter (best portfolio signal)
-- [x] `eval/generate_submission.py` — competition CSV generator (run on May 28 with OOS data)
-- [x] In-sample backtest: **CAGR=+9.32%, SR=0.850, MDD=13.28%** (low_vol, N=100, excl_illiq=5%, sell-at-close)
-
-**Remaining before June 1:**
 1. (May 28) Run `python eval/generate_submission.py --daily data/daily_data_oos.parquet` when OOS data releases
 2. Verify CSV format matches competition brief §4 exactly
 3. Submit `submissions/submission_sell_close.csv`
 
-**Optional improvements if time permits (diminishing returns):**
+**Optional if time permits (diminishing returns):**
 - Run full-data LOB backtest for `lob_imbalance` (execution IC=+0.012, orthogonal to low_vol) — could combine for marginal uplift
 - Stress-test OOS regime: low_vol underperforms in bull markets (high-beta growth stocks dominate)
 - Verify sector concentration of the 100-stock portfolio (likely overweight utilities/financials)
+
+---
+
+## Completed Work (archived 2026-04-11)
+
+All items below were completed during the 2026-04-10 backtest session.
+
+**Signal evaluation (IC metric):**
+- IC correlation matrix computed → 5 daily signals form 3 clusters; see `wiki/results/ic_correlation.md`
+- volume_reversal + alpha191_071 combined → composite_daily IR=5.08 (optimal: 85% vol_rev + 15% ptv)
+- Full LOB eval for lob_imbalance (inverted) → IC=0.0045, IR=2.40
+- OU quasi-Sharpe OFI → ofi_ou IR=1.77; median OU half-life=0.31d (daily OFI is effectively i.i.d.)
+- Matched-filter OFI (market-cap normalized) → IC=0.006, IR=1.05
+- Alpha191 factor 046 and 071 on full data → IC=0.027/IR=2.38, IC=0.035/IR=2.79
+- Walk-forward validation: OOS IR=8.29; IS-fitted worse (6.22); LOB/daily negative correlation is structural
+- Regime classification: up-market IR=9.97, down-market IR=6.49; vol-regimes symmetric (7.50/8.49)
+- PCA residual signal: vol_rev IR 5.01→11.04 vs idiosyncratic target; LOB degrades (captures systematic flow)
+- stable_turnover_momentum: implemented from Zhang et al. 2025; execution IC=−0.023, CAGR=−47% (failed)
+- low_amount_20d: execution IC=+0.038 but CAGR=−3.74%, MDD=39.6% (selects illiquid micro-caps — wrong direction)
+- Sector/cluster concentration (2026-04-11): 12 core holdings (>80% of days), 7 effective bets, mean pairwise r=0.33
+
+**Portfolio construction:**
+- Portfolio backtester built: `eval/backtest.py` with exact competition mechanics
+- Critical discovery: IC-based signals fail in execution (reversal alpha is overnight gap, bought AFTER gap)
+- Minimum volatility strategy: `signals/low_vol.py`, 60-day window, N=100, sell-at-close → CAGR=+9.32%, SR=0.85
+- Liquidity filter sweep: 5% exclusion is optimal (CAGR=+9.32% vs 8.63% without)
+- Submission generator: `eval/generate_submission.py` ready for OOS run May 28
+
+**Research (papers + concepts):**
+- Chinese A-share microstructure surveyed → `concepts/chinese-ashore-market.md`
+- "Innovative Alpha Strategies for Chinese A-Share" (2025) indexed → `papers/stable-turnover-momentum-2025.md`
+- "Factor Models for Chinese A-Shares" (2024) indexed → `papers/factor-models-chinese-ashares-2024.md`
 
 ---
 

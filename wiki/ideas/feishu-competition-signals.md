@@ -296,17 +296,88 @@ signal_df['alpha'] = signal_df.groupby('trade_day_id')['quasi_sharpe'].transform
 
 ---
 
+---
+
+## Tier 1 Additions (from new papers, April 2026 — session 2)
+
+### 13. Longer Lookback for Low-Vol Selection (60d → 120d / 252d)
+**Source:** [[volatility-effect-china-ashare-2021]]  
+**Idea:** Blitz et al. use a 3-year window; our 60-day window may be over-reactive to short-term vol spikes. Testing 120-day and 252-day lookbacks may improve portfolio stability and reduce turnover.
+
+```python
+daily['adj_close'] = daily['close'] * daily['adj_factor']
+daily['ret'] = daily.groupby('asset_id')['adj_close'].pct_change()
+
+for window in [120, 252]:
+    daily[f'vol_{window}d'] = daily.groupby('asset_id')['ret'].transform(
+        lambda x: x.rolling(window).std()
+    )
+# Then feed vol_120d or vol_252d into the existing low_vol.py selection logic
+# (replace the 60-day rolling std)
+```
+
+**Expected benefit:** lower turnover → lower transaction cost drag; more stable portfolio composition.  
+**Status:** `[ ] untested`
+
+---
+
+### 14. VMP Inverse-Variance Weighting Overlay
+**Source:** [[vol-managed-portfolios-china-2024]]  
+**Idea:** After low_vol selects the 100-stock portfolio, replace equal-weighting with inverse-realised-variance weights. Stocks with lower recent variance get larger weight. This is the Moreira-Muir (2017) VMP applied at the intra-portfolio level.
+
+```python
+# Within the selected 100 stocks for day t:
+var_22d = daily.groupby('asset_id')['ret'].transform(lambda x: x.rolling(22).var())
+
+def vmp_weights(selected_asset_ids, var_series, trade_day):
+    vars_ = var_series.loc[(var_series.index.get_level_values('trade_day_id') == trade_day) &
+                           (var_series.index.get_level_values('asset_id').isin(selected_asset_ids))]
+    inv_var = 1.0 / (vars_ + 1e-8)
+    return (inv_var / inv_var.sum()).rename('weight')
+```
+
+**Expected benefit:** OOS Sharpe improvement ~52% in the Chinese market context (Wang & Li 2024).  
+**Caveat:** Competition's long-only T+1 constraint limits leverage; scale-up in bull markets requires increasing N, not leveraging weights.  
+**Status:** `[ ] untested`
+
+---
+
+### 15. Market-Regime Scale Factor (VMP at Portfolio Level)
+**Source:** [[vol-managed-portfolios-china-2024]]  
+**Idea:** Compute a market-wide realised variance signal to determine whether to be more or less aggressive in stock count N. In low-vol (bull) periods, expand to N=120–150; in high-vol (bear) periods, contract to N=70–80. This addresses low_vol's known bull-market underperformance.
+
+```python
+# Market-level realised vol (cross-sectional mean of individual vols, or equal-weight portfolio vol)
+market_ret = daily.groupby('trade_day_id')['ret'].mean()
+market_vol_22d = market_ret.rolling(22).std() * np.sqrt(252)  # annualised
+
+target_vol = 0.15  # 15% annualised target
+scale = (target_vol / (market_vol_22d + 1e-8)).clip(0.5, 2.0)
+
+# Map scale to N:
+# scale >= 1.5 → N = 130 (bull market, diversify)
+# 1.0 <= scale < 1.5 → N = 100 (baseline)
+# scale < 1.0 → N = 75 (bear market, concentrate in lowest-vol)
+```
+
+**Status:** `[ ] untested`
+
+---
+
 ## Priority Order for Implementation
 
-1. ~~LOB imbalance~~ ✅ implemented; inverted (contrarian), needs LOB for full eval
-2. ~~Market-cap normalised OFI~~ ✅ implemented; inverted, needs LOB for full eval
+1. ~~LOB imbalance~~ ✅ IC=0.005, IR=2.40 (full LOB eval, 2026-04-10)
+2. ~~Market-cap normalised OFI~~ ✅ IC=0.006, IR=1.05 (full LOB eval, 2026-04-10)
 3. ~~Short-term reversal~~ ✅ IC=0.019, IR=1.84
 4. ~~Alpha191 f046 + f071~~ ✅ IC=0.027/IR=2.38 and IC=0.035/IR=2.79 (2026-04-10, full 484-day)
-5. **Signal combination** — next priority; IC correlation matrix + composite signal
-6. PCA residual OU signal (moderate complexity, high ceiling)
-7. OU quasi-Sharpe OFI signal (#12) — highest information content, moderate complexity
-8. Regime-conditional LOB signal (adds the regime insight from DRL paper)
-9. Depth slope / shape signals (novel, exploratory)
+5. ~~Signal combination~~ ✅ composite_daily IR=5.08, composite_full IR=9.64 (LOB+daily; IC_std halved)
+6. ~~PCA residual OU signal~~ ✅ vol_rev IR 5.01→11.04 vs idiosyncratic target; LOB degrades in PCA residual space
+7. ~~OU quasi-Sharpe OFI signal (#12)~~ ✅ ofi_ou IR=1.77; median OU half-life=0.31d — OFI i.i.d. at daily frequency
+8. Regime-conditional LOB signal — adds the regime insight from DRL paper (optional, diminishing returns)
+9. Depth slope / shape signals — novel, exploratory (optional)
+10. **Longer lookback low-vol (#13)** — `[ ] untested` — quick win; swap 60d for 120d in low_vol.py
+11. **VMP inverse-variance weighting (#14)** — `[ ] untested` — replace equal-weight within portfolio
+12. **Market-regime N scaling (#15)** — `[ ] untested` — expand/contract N based on market vol level
 
 ---
 
@@ -314,16 +385,19 @@ signal_df['alpha'] = signal_df.groupby('trade_day_id')['quasi_sharpe'].transform
 
 | Signal | Mean IC | IC Std | IR (ann.) | Hit Rate |
 |--------|---------|--------|-----------|----------|
-| volume_reversal | 0.0339 | 0.1074 | **5.01** | 64% |
+| **composite_full** (LOB+daily) | 0.0341 | 0.056 | **9.64** | **74%** |
+| composite_daily | 0.0361 | 0.113 | 5.08 | 66% |
+| volume_reversal | 0.0339 | 0.1074 | 5.01 | 64% |
 | alpha191_071 | 0.0346 | 0.1966 | 2.79 | 57% |
 | price_to_vwap | 0.0270 | 0.1664 | 2.58 | 58% |
+| lob_imbalance | 0.0045 | 0.030 | 2.40 | 59% |
 | alpha191_046 | 0.0267 | 0.1781 | 2.38 | 56% |
+| ofi_ou | 0.0081 | 0.072 | 1.77 | 55% |
 | short_term_reversal | 0.0191 | 0.1652 | 1.84 | 57% |
-| lob_imbalance | — | — | — | — | (requires LOB) |
-| ofi_matched_filter | — | — | — | — | (requires LOB) |
+| ofi_matched_filter | 0.0059 | 0.089 | 1.05 | 53% |
 
 **Key observations:**
-- `volume_reversal` has the highest IR (5.01) due to its low IC std (0.107 vs 0.165–0.197 for others) — more consistent day-to-day
-- `alpha191_071` (24d SMA deviation) matches `volume_reversal` in raw IC (0.035) but with higher IC std → good diversifier candidate
-- All five daily signals are positive — mean-reversion dominates Chinese A-shares as expected
-- Next step: compute IC cross-correlations; if <0.3, combine into equal-weight composite
+- LOB IC series are **negatively correlated** with daily signal IC series (r = −0.24 to −0.57) — they capture orthogonal market regimes
+- Combining LOB + daily signals collapses IC_std from ~0.11 to 0.056 → IR nearly doubles (composite_full IR=9.64)
+- **IC ≠ portfolio alpha**: all reversal/IC signals fail in execution (see Critical Discovery in `_index.md`). The winning portfolio strategy is `signals/low_vol.py` (min-volatility, CAGR=+9.32%, SR=0.85)
+- `volume_reversal` has the highest daily-only IR (5.01) due to its low IC std — more consistent day-to-day

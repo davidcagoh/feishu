@@ -1,11 +1,21 @@
 # Raw data — too large for git
 data/*_in_sample.parquet
+data/daily_data_oos.parquet
 
 # Keep sample files
 !data/daily_sample.parquet
 !data/lob_sample.parquet
 
+# Submission CSVs — generated; do not commit until final submission
+submissions/*.csv
+
 # Python bytecode
 __pycache__/
 *.pyc
 *.pyo
+
+# Jupyter artefacts
+.ipynb_checkpoints/
+
+# macOS metadata
+.DS_Store

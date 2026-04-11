@@ -118,4 +118,4 @@ They are **complementary**: AIPM explains the systematic component (`β' F_t`), 
 ---
 
 ## Concepts
-→ [[stochastic-discount-factor]] | [[factor-models]] | [[transformer-in-finance]] | [[statistical-arbitrage]]
+→ [[factor-models]] | [[transformer-in-finance]] | [[statistical-arbitrage]]
