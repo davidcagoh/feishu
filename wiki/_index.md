@@ -2,8 +2,8 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-11  
-**Papers indexed:** 11  
+**Last updated:** 2026-04-15  
+**Papers indexed:** 14  
 **Concepts:** 7  
 **Ideas:** 15 signals catalogued, 10 implemented
 
@@ -24,6 +24,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [factor-models-chinese-ashares-2024](papers/factor-models-chinese-ashares-2024.md) | Factor Models for Chinese A-Shares (Hanauer, Jansen, Swinkels & Zhou, 2024) | After transaction costs, optimal model = MKT + SMB + E/P only; profitability/investment/B/M don't survive | Medium — E/P not directly available but guides factor selection; three-factor alpha is the right evaluation target |
 | [volatility-effect-china-ashare-2021](papers/volatility-effect-china-ashare-2021.md) | The Volatility Effect in China (Blitz, Hanauer, van Vliet, 2021) | D1–D10 alpha spread 16.1% annualised; VOL factor Sharpe 0.51 vs 0.00; robust in large-cap liquid subset | High — foundational empirical support for low_vol.py; motivates longer lookback windows (120–252d vs current 60d) |
 | [vol-managed-portfolios-china-2024](papers/vol-managed-portfolios-china-2024.md) | Volatility-Managed Portfolios in the Chinese Equity Market (Wang & Li, 2024) | VMP OOS Sharpe ~1.50 vs ~0.99 unmanaged; bull-market scaling via 1/σ² weights; stronger in bear/high-sentiment regimes | High — provides price-only regime-conditioning overlay for low_vol; scale exposure by inverse realised variance to improve bull-market performance |
+| [us-china-cross-market-bipartite-2026](papers/us-china-cross-market-bipartite-2026.md) | A Bipartite Graph Approach to U.S.-China Cross-Market Return Forecasting (Liu, Grith, Dong, Cucuringu, Mar 2026) | US close-to-close returns predict Chinese open-to-close returns via sparse bipartite graph; asymmetry confirmed; graph selection + cross-market info both contribute | High — confirms cross-asset information (hypothesis #4); suggests intra-universe cluster-lag signals for Feishu |
+| [pca-mtp2-residual-factors-2026](papers/pca-mtp2-residual-factors-2026.md) | Uncovering Residual Factors in Financial Time Series via PCA and MTP2-constrained Gaussian Graphical Models (Feb 2026) | Hierarchical PCA + MTP2-GGM yields more orthogonal residuals; higher Sharpe + lower MDD/CVaR vs PCA-only on S&P 500 and TOPIX 500 (2012–2024) | High — directly upgrades our PCA residual signal; addresses hypothesis #4; Ledoit-Wolf whitening is a practical approximation |
+| [intraday-kalman-factor-china-2025](papers/intraday-kalman-factor-china-2025.md) | Intraday Factor Smoothing via Kalman Filtering and Tests of Pricing Ability: Evidence from China's A-Share Market (Xiao Wei, Dec 2025) | Kalman filter on 1-min data extracts latent efficient price; 4-day forecast → IC=0.0077, L/S Sharpe=0.58; complementary not standalone | Medium — addresses hypothesis #3 (intraday → daily factor); methodology adapts to our LOB snapshots; modest standalone IC but orthogonal to daily signals |
 
 ---
 
@@ -86,6 +89,25 @@ Cross-Market Alpha191 (2026)
 Which factors from Chinese A-shares survive in efficient US market?
 Factor 046 (range ratio) + 071 (24d deviation) = most universal
 → These are enhanced short-term reversal signals for Feishu daily data
+
+US-China Bipartite Graph (2026)         PCA+MTP2 Residual Factors (2026)
+    ↓                                         ↓
+US overnight returns predict             PCA residuals still contain latent
+Chinese open-to-close returns            common structure → MTP2-GGM whitening
+    ↓                                    produces cleaner idiosyncratic signal
+Cross-market graph is sparse,                 ↓
+rolling, hypothesis-tested            Directly extends our pca_residual result:
+    ↘                                  vol_rev IR 5.01→11.04; whitening should
+      Both papers confirm:              push further
+      Cross-asset info helps (hyp. #4)
+
+Intraday Kalman Factor (2025)
+    ↓
+Kalman filter on LOB mid-prices → latent efficient price
+4-day ahead forecast → daily factor, IC=0.0077
+    ↓
+Methodology adapts to our 23-24 LOB snapshots/day
+Potential uplift to LOB component of composite_full
 ```
 
 ---

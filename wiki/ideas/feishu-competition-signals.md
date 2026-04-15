@@ -364,6 +364,110 @@ scale = (target_vol / (market_vol_22d + 1e-8)).clip(0.5, 2.0)
 
 ---
 
+---
+
+## Tier 2 Additions (from new papers, April 2026 — session 3)
+
+### 16. MTP2-GGM Whitened PCA Residual Signal
+**Source:** [[pca-mtp2-residual-factors-2026]]  
+**Idea:** After standard PCA de-factoring, apply Ledoit-Wolf precision-matrix whitening to residuals before using them as a contrarian signal. This removes latent common structure that PCA alone misses, producing more orthogonal idiosyncratic components.
+
+```python
+import numpy as np
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.covariance import LedoitWolf
+
+R = daily.pivot('trade_day_id', 'asset_id', 'ret').fillna(0)
+WINDOW, K = 120, 10
+signals = {}
+
+for t in range(WINDOW, len(R)):
+    train = R.iloc[t - WINDOW:t].values
+    today = R.iloc[t].values
+
+    # Step 1: PCA de-factor
+    pca = PCA(n_components=K)
+    pca.fit(train)
+    resid_train = train - pca.inverse_transform(pca.transform(train))
+    resid_today = today - pca.inverse_transform(pca.transform(today[np.newaxis, :]))[0]
+
+    # Step 2: Ledoit-Wolf precision whitening (approximate MTP2-GGM)
+    lw = LedoitWolf().fit(resid_train)
+    resid_whitened = lw.precision_ @ resid_today
+
+    # Contrarian signal
+    signals[R.index[t]] = -resid_whitened
+
+signal_df = pd.DataFrame(signals, index=R.columns).T
+signal_df = signal_df.apply(lambda col: (col - col.mean()) / (col.std() + 1e-8), axis=1)
+```
+
+**Expected benefit vs. current PCA residual:** Vol_rev IR improved from 5.01→11.04 with PCA residuals; whitening should reduce residual cross-correlations further, potentially pushing IC std lower and IR higher.  
+**Status:** `[ ] untested`
+
+---
+
+### 17. Kalman-Smoothed LOB Mid-Price Signal
+**Source:** [[intraday-kalman-factor-china-2025]]  
+**Idea:** Fit a local linear trend state-space model to the intraday LOB mid-price trajectory (using our ~23-24 snapshots/day). The Kalman-smoothed latent price trend and its 4-step forecast form a daily cross-sectional signal. This replaces our simple EOD imbalance with a full-trajectory model.
+
+```python
+from pykalman import KalmanFilter
+
+def kalman_signal(mid_prices):
+    if len(mid_prices) < 5:
+        return np.nan
+    obs = mid_prices.reshape(-1, 1)
+    kf = KalmanFilter(
+        transition_matrices=[[1, 1], [0, 1]],
+        observation_matrices=[[1, 0]],
+        initial_state_mean=[obs[0, 0], 0],
+        n_dim_state=2, n_dim_obs=1,
+    )
+    kf = kf.em(obs, n_iter=5)
+    means, _ = kf.smooth(obs)
+    latent_p, drift = means[-1, 0], means[-1, 1]
+    forecast = latent_p + 4 * drift
+    return (forecast - latent_p) / (latent_p + 1e-8)
+
+lob['mid'] = (lob['ask_price_1'] + lob['bid_price_1']) / 2
+kalman_signals = lob.sort_values('time').groupby(['asset_id', 'trade_day_id']).apply(
+    lambda g: kalman_signal(g['mid'].values)
+).reset_index(name='kalman_signal')
+```
+
+**Expected impact:** Modest standalone IC (~0.008 based on paper; our current EOD lob_imbalance IC=0.005). Main value is as a replacement for the LOB component in `composite_full`, which benefits from orthogonality with daily signals.  
+**Status:** `[ ] untested`
+
+---
+
+### 18. Cluster-Lag Cross-Asset Signal
+**Source:** [[us-china-cross-market-bipartite-2026]]  
+**Idea:** The bipartite graph paper shows that intra-universe cross-stock lag effects are exploitable when structured sparsely. Using our 3-cluster IC structure (from `wiki/results/ic_correlation.md`), compute the prior-day cluster-average return and use it as a lagged predictor for individual stock returns.
+
+```python
+# Assign assets to 3 IC clusters (from existing analysis)
+# cluster_map: dict mapping asset_id → cluster_id (0, 1, 2)
+
+daily['cluster'] = daily['asset_id'].map(cluster_map)
+
+# Prior-day cluster average return
+cluster_ret = daily.groupby(['trade_day_id', 'cluster'])['ret'].mean().reset_index(name='cluster_ret')
+daily = daily.merge(cluster_ret.rename(columns={'trade_day_id': 'prev_day'}),
+                    left_on=['prev_trade_day_id', 'cluster'],
+                    right_on=['prev_day', 'cluster'], how='left')
+
+# Signal: deviation from cluster mean return (idiosyncratic relative to cluster)
+daily['cluster_lag_signal'] = -(daily['ret'] - daily['cluster_ret'].shift(1))
+# Negative: stocks that underperformed cluster yesterday → expect catch-up
+```
+
+**Expected value:** Sparse, data-driven; tests hypothesis #4 with available data. May have modest standalone IC but diversifies vs. existing signals.  
+**Status:** `[ ] untested`
+
+---
+
 ## Priority Order for Implementation
 
 1. ~~LOB imbalance~~ ✅ IC=0.005, IR=2.40 (full LOB eval, 2026-04-10)
@@ -378,6 +482,9 @@ scale = (target_vol / (market_vol_22d + 1e-8)).clip(0.5, 2.0)
 10. **Longer lookback low-vol (#13)** — `[ ] untested` — quick win; swap 60d for 120d in low_vol.py
 11. **VMP inverse-variance weighting (#14)** — `[ ] untested` — replace equal-weight within portfolio
 12. **Market-regime N scaling (#15)** — `[ ] untested` — expand/contract N based on market vol level
+13. **MTP2-GGM whitened PCA residual (#16)** — `[ ] untested` — adds precision whitening after PCA; extends pca_residual result
+14. **Kalman-smoothed LOB mid-price (#17)** — `[ ] untested` — full-trajectory intraday model for LOB component
+15. **Cluster-lag cross-asset signal (#18)** — `[ ] untested` — within-universe bipartite graph proxy
 
 ---
 

@@ -38,12 +38,15 @@ We've only built reversal signals (1–24 day lookbacks). Most markets show 1-mo
 ### 3. Does the LOB signal vary intraday? (Morning momentum vs afternoon reversal)
 The EOD contrarian finding is about retail closing pressure. But institutions trade heavily in the morning session. The LOB signal computed on morning snapshots only (09:40–12:00) may behave differently — possibly momentum, not contrarian.
 - **Test:** split LOB snapshots into morning (09:40–12:00) and afternoon (13:00–15:00), compute IC separately.
-- **Search:** intraday LOB dynamics in Chinese markets, time-of-day effects in order flow.
+- **Paper evidence (2025-12):** Wei (2025, SSRN:5859882) applies a Kalman filter state-space model to 1-minute Chinese A-share data and extracts a latent "efficient price" signal with IC=0.0077. The paper confirms that full-trajectory intraday information improves on EOD snapshots, though IC is modest standalone. Methodology adapts to our 23-24 LOB snapshots. See signal idea #17.
+- **Status:** Partially addressed by paper evidence; experiment (morning vs afternoon IC split) still open.
 
 ### 4. Does cross-asset information help?
-All current signals are purely within-asset (each asset's own price/volume history). The attention factors paper shows that factor residuals — what's left after removing market-wide PCA factors — are more predictable than raw returns. We haven't tested PCA residuals as a signal yet.
-- **Test:** rolling PCA (K=5–10 factors, 120-day window), use residual as signal. Compare IC to `short_term_reversal` (the most naive baseline).
-- **Search:** factor model residuals, IPCA, conditional factor models, cross-sectional return predictability.
+All current signals are purely within-asset (each asset's own price/volume history). The attention factors paper shows that factor residuals — what's left after removing market-wide PCA factors — are more predictable than raw returns. We have now tested basic PCA residuals (vol_rev IR 5.01→11.04) and found strong improvement.
+- **PCA residuals confirmed (2026-04-10):** Rolling K=5–10 PCA, residual z-score → vol_rev IR 5.01→11.04 (see `wiki/results/pca_residual.md`). LOB degrades in PCA residual space (captures systematic flow).
+- **New paper evidence — cross-market bipartite (2026-03):** Liu et al. (arXiv:2603.10559) confirm that US overnight returns predict Chinese open-to-close returns via a sparse directed bipartite graph. Within our dataset, the analogous test is cluster-lagged returns (see signal #18).
+- **New paper evidence — MTP2-GGM whitening (2026-02):** arXiv:2602.05580 shows that PCA residuals still contain latent common structure. Applying MTP2-constrained GGM whitening produces more orthogonal residuals with higher Sharpe ratios and lower CVaR on S&P 500 / TOPIX 500. This directly extends our pca_residual result — see signal #16 (Ledoit-Wolf whitening as practical approximation).
+- **Revised status:** Partially confirmed (PCA residuals help). Whether additional MTP2 whitening improves further is an open experiment.
 
 ### 5. Why does volume_reversal decay less? Does it saturate on quiet days?
 The low IC std of `volume_reversal` is great for IR, but there's a potential downside: on days when volume is normal (no spike), the signal is near-zero — it only fires when there's genuine excess volume. This could mean it covers fewer assets per day, and its capacity is limited.
@@ -77,10 +80,10 @@ Based on the open hypotheses above, in order:
 
 ## What the Next Paper Search Should Prioritise
 
-The open hypotheses map to these paper search directions:
+Updated 2026-04-15. Papers found this week (arXiv:2603.10559, arXiv:2602.05580, SSRN:5859882) partially address hypotheses #3 and #4. Remaining open directions:
 
-- **Signal combination under correlated factors** — how to weight signals that measure overlapping phenomena
-- **Chinese A-share momentum** — does intermediate-horizon momentum survive? Is it PEAD, earnings-based, or pure price?
-- **Intraday LOB dynamics, time-of-day effects** — morning vs afternoon regime in order flow
-- **Factor residual predictability, PCA stat-arb** — directly addresses hypothesis #4
-- **Regime-conditional alpha** — volatility regimes and signal IC stability
+- **Chinese A-share momentum** — does intermediate-horizon momentum survive (hypothesis #2)? Is it PEAD, earnings-based, or pure price? Still entirely open; no paper found this week addresses it.
+- **Signal combination under correlated factors** — how to weight signals that measure overlapping phenomena (hypothesis #1 — IC correlation matrix already computed, showing 3 clusters; the open question is optimal weighting under partial IC correlation).
+- **Intraday LOB dynamics, time-of-day effects** — the Kalman paper (SSRN:5859882) partially addresses hypothesis #3 but the morning vs afternoon IC split experiment is still untested. Next search: papers on intraday session-level OFI in Chinese markets specifically.
+- **MTP2-GGM whitening validation on Chinese data** — arXiv:2602.05580 uses US/Japan data. Is the MTP2 assumption (positive partial correlations) valid for A-shares where retail-driven common factors are stronger? Search for graphical model approaches applied to high-retail-participation markets.
+- **Regime-conditional alpha** (hypothesis #6) — volatility regimes and signal IC stability. Still no dedicated paper found. Search: HMM-based regime detection for equity cross-sectional signals, conditional factor models.
