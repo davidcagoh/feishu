@@ -468,6 +468,90 @@ daily['cluster_lag_signal'] = -(daily['ret'] - daily['cluster_ret'].shift(1))
 
 ---
 
+---
+
+## Tier 1 Additions (from new papers, April 2026 — session 4)
+
+### 19. Wasserstein HMM Soft Regime Overlay for vol_managed
+**Source:** [[explainable-regime-aware-investing-2026]]  
+**Idea:** Replace the current binary `variance > 3× median → skip rebalance` filter with a continuous regime-stress probability from a 2-state Wasserstein Hidden Markov Model. Scale rebalancing weight by `(1 − stress_prob)` instead of an on/off switch.
+
+```python
+from hmmlearn.hmm import GaussianHMM
+import numpy as np
+
+def compute_stress_prob(market_features, window=120, n_regimes=2):
+    """
+    market_features: np.array of shape (T, D) — e.g. [cross-sectional vol, market return]
+    Returns the stress-regime probability for the latest observation.
+    """
+    if len(market_features) < window:
+        return 0.5  # neutral if insufficient history
+    hmm = GaussianHMM(n_components=n_regimes, covariance_type='full', n_iter=100)
+    hmm.fit(market_features[-window:])
+    posteriors = hmm.predict_proba(market_features[-window:])
+    # Identify stress regime as highest-mean-vol component
+    stress_idx = int(np.argmax([hmm.means_[i].mean() for i in range(n_regimes)]))
+    return float(posteriors[-1, stress_idx])
+
+# In vol_managed.py, replace:
+#   if market_var > threshold: continue  (skip rebalance)
+# With:
+#   stress_p = compute_stress_prob(market_features[:t])
+#   scale = max(0, 1 - stress_p)          # 0 = full stress → skip, 1 = calm → full weight
+#   buy_pct *= scale
+```
+
+**Expected improvement over current vol_managed:** softer response on partial-stress days; self-calibrating stress detection; avoids cliff-edge around the fixed 3× threshold. Matches Boukardagha (2026) Sharpe improvement of 2.18 vs 1.59.  
+**Status:** `[ ] untested`
+
+---
+
+### 20. Cluster-Constrained Low-Vol Selection
+**Source:** [[clustering-augmented-reversal-china-2025]]  
+**Idea:** After computing per-asset volatility, cluster stocks by volatility + return + turnover using K-means. Select the lowest-vol stocks while ensuring each cluster is represented. This fixes the sector concentration problem (currently: 12 core holdings, 7 effective bets, mean pairwise r=0.33–0.43).
+
+```python
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+import pandas as pd
+import numpy as np
+
+def cluster_constrained_selection(daily, trade_day, N=20, n_clusters=10, lookback=60):
+    """
+    Select N stocks minimising volatility subject to cluster coverage constraint.
+    """
+    recent = daily[daily['trade_day_id'] <= trade_day].groupby('asset_id').tail(lookback)
+    features = recent.groupby('asset_id').agg(
+        vol=('ret', 'std'),
+        mean_ret=('ret', 'mean'),
+        log_turnover=('amount', lambda x: np.log(x.mean() + 1))
+    ).dropna()
+
+    if len(features) < n_clusters:
+        return features.nsmallest(N, 'vol').index.tolist()
+
+    scaler = StandardScaler()
+    X = scaler.fit_transform(features[['vol', 'mean_ret', 'log_turnover']])
+    km = KMeans(n_clusters=n_clusters, n_init=10, random_state=42)
+    features['cluster'] = km.fit_predict(X)
+
+    # One lowest-vol stock per cluster (floor), remainder filled globally
+    floor = max(1, N // n_clusters)
+    selected = []
+    for c in range(n_clusters):
+        group = features[features['cluster'] == c].nsmallest(floor, 'vol')
+        selected.extend(group.index.tolist())
+    remaining = features[~features.index.isin(selected)].nsmallest(N - len(selected), 'vol')
+    selected.extend(remaining.index.tolist())
+    return list(dict.fromkeys(selected))[:N]
+```
+
+**Expected improvement:** higher effective number of independent bets (from ~7 toward N); lower pairwise correlation; potential MDD reduction. Score formula weighs MDD at 25% — a 1–2% MDD improvement is worth ~0.0025–0.005 Score points.  
+**Status:** `[ ] untested`
+
+---
+
 ## Priority Order for Implementation
 
 1. ~~LOB imbalance~~ ✅ IC=0.005, IR=2.40 (full LOB eval, 2026-04-10)
@@ -479,12 +563,14 @@ daily['cluster_lag_signal'] = -(daily['ret'] - daily['cluster_ret'].shift(1))
 7. ~~OU quasi-Sharpe OFI signal (#12)~~ ✅ ofi_ou IR=1.77; median OU half-life=0.31d — OFI i.i.d. at daily frequency
 8. Regime-conditional LOB signal — adds the regime insight from DRL paper (optional, diminishing returns)
 9. Depth slope / shape signals — novel, exploratory (optional)
-10. **Longer lookback low-vol (#13)** — `[ ] untested` — quick win; swap 60d for 120d in low_vol.py
-11. **VMP inverse-variance weighting (#14)** — `[ ] untested` — replace equal-weight within portfolio
-12. **Market-regime N scaling (#15)** — `[ ] untested` — expand/contract N based on market vol level
-13. **MTP2-GGM whitened PCA residual (#16)** — `[ ] untested` — adds precision whitening after PCA; extends pca_residual result
-14. **Kalman-smoothed LOB mid-price (#17)** — `[ ] untested` — full-trajectory intraday model for LOB component
-15. **Cluster-lag cross-asset signal (#18)** — `[ ] untested` — within-universe bipartite graph proxy
+10. **Cluster-constrained low-vol (#20)** — `[ ] untested` — K-means diversification fix; may reduce MDD
+11. **HMM soft regime overlay (#19)** — `[ ] untested` — replace binary vol threshold with Wasserstein HMM stress prob
+12. **Longer lookback low-vol (#13)** — `[ ] untested` — quick win; swap 60d for 120d in low_vol.py
+13. **VMP inverse-variance weighting (#14)** — `[ ] untested` — replace equal-weight within portfolio
+14. **Market-regime N scaling (#15)** — `[ ] untested` — expand/contract N based on market vol level
+15. **MTP2-GGM whitened PCA residual (#16)** — `[ ] untested` — adds precision whitening after PCA; extends pca_residual result
+16. **Kalman-smoothed LOB mid-price (#17)** — `[ ] untested` — full-trajectory intraday model for LOB component
+17. **Cluster-lag cross-asset signal (#18)** — `[ ] untested` — within-universe bipartite graph proxy
 
 ---
 

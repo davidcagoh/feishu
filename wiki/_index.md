@@ -3,9 +3,9 @@
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
 **Last updated:** 2026-04-17  
-**Papers indexed:** 14  
+**Papers indexed:** 17  
 **Concepts:** 7  
-**Ideas:** 15 signals catalogued, 10 implemented
+**Ideas:** 20 signals catalogued, 10 implemented
 
 ---
 
@@ -27,6 +27,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [us-china-cross-market-bipartite-2026](papers/us-china-cross-market-bipartite-2026.md) | A Bipartite Graph Approach to U.S.-China Cross-Market Return Forecasting (Liu, Grith, Dong, Cucuringu, Mar 2026) | US close-to-close returns predict Chinese open-to-close returns via sparse bipartite graph; asymmetry confirmed; graph selection + cross-market info both contribute | High — confirms cross-asset information (hypothesis #4); suggests intra-universe cluster-lag signals for Feishu |
 | [pca-mtp2-residual-factors-2026](papers/pca-mtp2-residual-factors-2026.md) | Uncovering Residual Factors in Financial Time Series via PCA and MTP2-constrained Gaussian Graphical Models (Feb 2026) | Hierarchical PCA + MTP2-GGM yields more orthogonal residuals; higher Sharpe + lower MDD/CVaR vs PCA-only on S&P 500 and TOPIX 500 (2012–2024) | High — directly upgrades our PCA residual signal; addresses hypothesis #4; Ledoit-Wolf whitening is a practical approximation |
 | [intraday-kalman-factor-china-2025](papers/intraday-kalman-factor-china-2025.md) | Intraday Factor Smoothing via Kalman Filtering and Tests of Pricing Ability: Evidence from China's A-Share Market (Xiao Wei, Dec 2025) | Kalman filter on 1-min data extracts latent efficient price; 4-day forecast → IC=0.0077, L/S Sharpe=0.58; complementary not standalone | Medium — addresses hypothesis #3 (intraday → daily factor); methodology adapts to our LOB snapshots; modest standalone IC but orthogonal to daily signals |
+| [explainable-regime-aware-investing-2026](papers/explainable-regime-aware-investing-2026.md) | Explainable Regime Aware Investing (Boukardagha, Feb/Mar 2026) | Wasserstein HMM + transaction-cost-aware MV optimization; Sharpe 2.18 vs 1.59 equal-weight; MDD −5.43% vs −14.62% SPX | High — soft HMM regime overlay replaces binary vol threshold in vol_managed; directly addresses hypothesis #6 |
+| [dissecting-momentum-china-2025](papers/dissecting-momentum-china-2025.md) | Dissecting Momentum in China (Liu, Tan, Xu, Yuan, Zhu, Feb 2025) | Momentum absent in China: news-day gains reversed on non-news days (retail tug-of-war); explains absence at all horizons 3–12m | High — definitively closes hypothesis #2 (intermediate momentum); confirms our focus on reversal/low-vol is correct |
+| [clustering-augmented-reversal-china-2025](papers/clustering-augmented-reversal-china-2025.md) | Clustering-Augmented Reversal Strategy: Chinese Stock Market (Jiao & Zheng, Nov 2025) | K-means clustering before reversal portfolios yields 2.28–2.50%/month alpha; clustering contributes 20–45% of returns; no risk-factor loadings | High — K-means cluster-constrained low-vol selection fixes sector concentration problem; could reduce MDD on OOS |
 
 ---
 
@@ -108,6 +111,22 @@ Kalman filter on LOB mid-prices → latent efficient price
     ↓
 Methodology adapts to our 23-24 LOB snapshots/day
 Potential uplift to LOB component of composite_full
+
+Explainable Regime Aware Investing (2026)        Dissecting Momentum in China (2025)
+    ↓                                                ↓
+Wasserstein HMM regime probs                 News-day vs non-news-day return split
+→ soft MV overlay (not binary threshold)     → retail tug-of-war kills momentum
+    ↓                                                ↓
+Replaces vol_managed 3× threshold            Closes hypothesis #2: intermediate
+with continuous stress-prob weight           momentum doesn't work in A-shares
+
+Clustering-Augmented Reversal (2025)
+    ↓
+K-means clustering by vol/return/turnover features
+→ within-cluster reversal stronger than cross-cluster
+    ↓
+Adapt to low_vol: select stocks across clusters
+→ reduces concentration from 7→~N effective bets
 ```
 
 ---

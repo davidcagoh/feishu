@@ -56,7 +56,8 @@ The low IC std of `volume_reversal` is great for IR, but there's a potential dow
 ### 6. Is there regime dependence in signal quality?
 Signal IC likely varies with market conditions. In high-volatility regimes (e.g. market-wide stress), reversal may be stronger or weaker. The DRL paper shows regime-conditioning significantly improves OU-based strategies.
 - **Test:** split days by cross-sectional return std (proxy for market vol). Compute IC of `volume_reversal` and `alpha191_071` per tercile.
-- **Search:** regime-switching in factor models, volatility-conditional alpha, HMM for equity signals.
+- **New paper evidence — Wasserstein HMM (2026-02/03):** Boukardagha (arXiv:2603.04441) shows that a strictly causal Wasserstein HMM feeding regime probabilities into a transaction-cost-aware MV optimiser achieves Sharpe 2.18 vs 1.59 equal-weight, MDD −5.43% vs −14.62% SPX. The key insight is that soft (probabilistic) regime conditioning outperforms both binary thresholds and hard regime-switching. Regime inference stability (not just detection accuracy) is the first-order driver of drawdown reduction.
+- **Revised status:** Partially addressed by paper evidence. Concrete next step: replace vol_managed's binary 3×-median threshold with a 2-state Wasserstein HMM stress probability (Signal #19). Still open: whether signal IC itself varies with regime (vs. just the portfolio sizing).
 
 ### IC/IR metrics do not predict portfolio performance — execution gap is the root cause
 **All IC-based reversal signals fail in actual portfolio construction.** Buy execution at `vwap_0930_0935` happens *after* the overnight gap has closed. Reversal alpha is earned close-to-open; by buy time the opportunity is gone. Improving IC (better signal decomposition, PCA whitening, LOB Kalman) does not fix this — it's a structural execution gap, not a signal quality problem.
@@ -81,6 +82,9 @@ At N=20: sell-at-open Score=0.3116 vs sell-at-close Score=0.2826. Sell-at-open c
 ### LOB imbalance as a direct momentum signal
 Raw IC is reliably negative over the full 484-day period. This isn't a small-sample artefact — it's consistent with the known retail FOMO mechanism in A-shares. We shouldn't keep re-testing this direction.
 
+### Intermediate-horizon price momentum in Chinese A-shares (hypothesis #2, closed 2026-04-17)
+Liu et al. (SSRN:5130681, Feb 2025) provides a definitive mechanism: Chinese stocks with high past news-day returns are reversed on subsequent non-news days, creating a "tug-of-war" that kills 3–12 month momentum. This is retail-driven (crowding on news events, unwinding on quiet days) and is not present in the US market. Without earnings/news calendar data (unavailable in Feishu), there is no feasible path to isolate the exploitable news-day component. **Do not pursue intermediate-horizon momentum signals.**
+
 ---
 
 ## What the Next Experiments Should Prioritise
@@ -97,6 +101,11 @@ Based on the open hypotheses above, in order:
 ## What the Next Paper Search Should Prioritise
 
 Updated 2026-04-17. **Critical reframe:** IC-based signal improvements are a dead end (confirmed). Our best strategy is minimum-volatility portfolio construction. All future paper searches must focus on what can improve a long-only, low-vol, low-turnover defensive equity portfolio — not on reversal signals or factor IC.
+
+**Papers added this week (2026-04-17):**
+- arXiv:2603.04441 (Wasserstein HMM regime investing) — regime detection for low-vol portfolio, Priority 4
+- SSRN:5130681 (Dissecting Momentum in China) — closes hypothesis #2; confirms reversal-only focus
+- Pacific-Basin Finance Journal (Clustering-Augmented Reversal, Nov 2025) — K-means diversification for low_vol, Priority 3
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless
