@@ -2,7 +2,7 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-15  
+**Last updated:** 2026-04-17  
 **Papers indexed:** 14  
 **Concepts:** 7  
 **Ideas:** 15 signals catalogued, 10 implemented
@@ -216,6 +216,8 @@ Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D0
 - `signals/low_vol.py` — minimum volatility signal with liquidity filter
 - `signals/vol_managed.py` — Wang & Li (2024) vol-managed overlay on low_vol (**current best signal**)
 - `eval/generate_submission.py` — outputs competition CSV; ready for OOS run May 28
+- Repo: https://github.com/davidcagoh/feishu
+- Weekly paper search trigger: `trig_0172Cps6UTTyFq5uSKY3e5UP` (Wednesdays 5pm ET)
 
 ## Remaining before June 1
 

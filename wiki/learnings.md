@@ -58,6 +58,22 @@ Signal IC likely varies with market conditions. In high-volatility regimes (e.g.
 - **Test:** split days by cross-sectional return std (proxy for market vol). Compute IC of `volume_reversal` and `alpha191_071` per tercile.
 - **Search:** regime-switching in factor models, volatility-conditional alpha, HMM for equity signals.
 
+### IC/IR metrics do not predict portfolio performance — execution gap is the root cause
+**All IC-based reversal signals fail in actual portfolio construction.** Buy execution at `vwap_0930_0935` happens *after* the overnight gap has closed. Reversal alpha is earned close-to-open; by buy time the opportunity is gone. Improving IC (better signal decomposition, PCA whitening, LOB Kalman) does not fix this — it's a structural execution gap, not a signal quality problem.
+- Confirmed 2026-04-10: composite_full (IR=9.64) → CAGR=−54%; volume_reversal (IR=5.01) → CAGR=−54%.
+- **Implication:** IC/IR is a dead-end for this competition. Do not pursue reversal signal improvements.
+
+### Minimum volatility (low_vol) is the only viable portfolio strategy found
+`signals/low_vol.py` (60d rolling std, 5% illiquid exclusion, N=20, sell-at-open) beats the market and all IC-based signals. CAGR=+9.04%, SR=0.981, MDD=9.38%, Score=0.3116.
+- Mechanism: avoids limit-down spirals and sector blowups in the IS bear-market period. Low turnover → low cost drag.
+- Vol-managed overlay (Wang & Li 2024) adds +0.0071 Score by skipping rebalance on top-5% variance days.
+
+### 60-day lookback is optimal; longer windows (120–252d) collapse returns
+Full sweep (2026-04-17, N=20, sell-at-open): the vol effect literature recommends 120–252d lookbacks, but on D001–D484 they are catastrophically worse. Score at 180d = 0.054, at 252d = −0.023. The IS period is only 484 days with concentrated bear-regime structure — a long lookback window captures stale cross-sectional vol rankings that no longer reflect current risk.
+
+### Sell-at-open dominates sell-at-close for the N=20 vol_managed configuration
+At N=20: sell-at-open Score=0.3116 vs sell-at-close Score=0.2826. Sell-at-open captures the post-overnight-gap open price, which for low-vol defensive stocks is more favourable (less adverse selection).
+
 ---
 
 ## Ruled Out
@@ -80,10 +96,34 @@ Based on the open hypotheses above, in order:
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-04-15. Papers found this week (arXiv:2603.10559, arXiv:2602.05580, SSRN:5859882) partially address hypotheses #3 and #4. Remaining open directions:
+Updated 2026-04-17. **Critical reframe:** IC-based signal improvements are a dead end (confirmed). Our best strategy is minimum-volatility portfolio construction. All future paper searches must focus on what can improve a long-only, low-vol, low-turnover defensive equity portfolio — not on reversal signals or factor IC.
 
-- **Chinese A-share momentum** — does intermediate-horizon momentum survive (hypothesis #2)? Is it PEAD, earnings-based, or pure price? Still entirely open; no paper found this week addresses it.
-- **Signal combination under correlated factors** — how to weight signals that measure overlapping phenomena (hypothesis #1 — IC correlation matrix already computed, showing 3 clusters; the open question is optimal weighting under partial IC correlation).
-- **Intraday LOB dynamics, time-of-day effects** — the Kalman paper (SSRN:5859882) partially addresses hypothesis #3 but the morning vs afternoon IC split experiment is still untested. Next search: papers on intraday session-level OFI in Chinese markets specifically.
-- **MTP2-GGM whitening validation on Chinese data** — arXiv:2602.05580 uses US/Japan data. Is the MTP2 assumption (positive partial correlations) valid for A-shares where retail-driven common factors are stronger? Search for graphical model approaches applied to high-retail-participation markets.
-- **Regime-conditional alpha** (hypothesis #6) — volatility regimes and signal IC stability. Still no dedicated paper found. Search: HMM-based regime detection for equity cross-sectional signals, conditional factor models.
+**Do NOT search for:**
+- LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless
+- Statistical arbitrage, mean-reversion signal construction
+- PCA residuals, Kalman filters on LOB data — same problem
+
+**Priority 1 — Bull-market resilience (HIGHEST IMPACT)**
+Our biggest OOS risk: D485–D726 could be a bull market where low-vol dramatically underperforms. Search for:
+- Low-volatility anomaly behaviour in bull vs bear markets (Chinese A-shares specifically)
+- Adaptive minimum-variance portfolios that incorporate regime signals
+- Methods for blending defensive and growth exposure based on market-wide signals
+- Papers on low-vol strategy OOS degradation and how to mitigate it
+
+**Priority 2 — MDD reduction in long-only portfolios**
+MDD=9.38% is structural — vol-spike blanking didn't move it. Search for:
+- Drawdown control in long-only equity portfolios (position sizing, stop-loss overlays, tail-risk hedging)
+- Portfolio insurance for long-only constraint (no leverage, no shorts)
+- Maximum drawdown minimisation as a portfolio objective (not just variance)
+
+**Priority 3 — Stock selection within the low-vol universe**
+Are there characteristics that improve returns *within* a minimum-volatility stock screen? Search for:
+- Quality factors (profitability, earnings stability) combined with low-volatility in Chinese equities
+- Sector-neutral minimum variance construction — does forcing sector balance improve OOS Sharpe?
+- Liquidity-adjusted low-vol: are there better illiquidity screens than 20d avg amount?
+
+**Priority 4 — Regime detection without price data**
+Can we detect whether OOS period is bull or bear *before* it happens, using macro signals available in the competition data? Search for:
+- Market state classification from cross-sectional return dispersion or vol level
+- Regime-switching overlays on low-vol strategies (not HMM on IC — HMM on portfolio-level signals)
+- Breadth indicators (% of stocks above moving average) as regime proxies

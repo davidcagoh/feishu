@@ -11,21 +11,28 @@ Usage:
     # Generate from OOS data (when D485–D726 is released on May 28)
     python eval/generate_submission.py \\
         --daily data/daily_data_oos.parquet \\
-        --sell-mode close \\
-        --n-stocks 100 \\
-        --output submissions/TEAMID_sell_close.csv
+        --sell-mode open \\
+        --n-stocks 20 \\
+        --output submissions/TEAMID_sell_open.csv
 
 Strategy: vol_managed (volatility-managed overlay on low_vol), 60-day base window,
-N=100 stocks, excl_illiq=5%, sell-at-close.
+N=20 stocks, excl_illiq=5%, sell-at-open.
 
 vol_managed is chosen over raw low_vol because it blanks out signal on high-variance
 market days (rolling_var > 3x median), causing the backtest to hold the existing
-low-vol portfolio rather than rebalance into a turbulent market. This reduces MDD
-and improves the competition score (0.45*CAGR + 0.30*SR + 0.25*(-MDD)).
+low-vol portfolio rather than rebalance into a turbulent market. This improves SR
+and the competition score (0.45*CAGR + 0.30*SR + 0.25*(-MDD)).
 
-In-sample result (D001–D484, N=100, sell-at-close):
+In-sample result (D001–D484, N=20, sell-at-open) — confirmed best after full sweep:
   vol_managed: CAGR=+9.04%, SR=+0.981, MDD=9.38%, Score=0.3116
   low_vol:     CAGR=+8.81%, SR=+0.961, MDD=9.38%, Score=0.3045
+
+Sweep results (base_window × sell_mode, 2026-04-17):
+  60d sell-at-open:  Score=0.3116  ← BEST
+  60d sell-at-close: Score=0.2826
+  90d sell-at-open:  Score=0.2625
+  120d sell-at-open: Score=0.2792
+  Longer windows (180d, 252d) collapse to near-zero CAGR on this dataset.
 """
 
 from __future__ import annotations
@@ -46,8 +53,8 @@ from signals import vol_managed as signal_module
 
 def generate_orders(
     daily: pd.DataFrame,
-    sell_mode: str = "close",
-    n_stocks: int = 100,
+    sell_mode: str = "open",
+    n_stocks: int = 20,
     vol_window: int = 60,
     excl_illiq: float = 0.05,
 ) -> pd.DataFrame:
@@ -169,10 +176,10 @@ def main() -> None:
                         help="Path to daily parquet file (default: auto-detect IS or sample)")
     parser.add_argument("--sample", action="store_true", default=False,
                         help="Use sample data for a quick smoke test")
-    parser.add_argument("--sell-mode", choices=["open", "close"], default="close",
-                        help="Sell mode: open or close (default: close)")
-    parser.add_argument("--n-stocks", type=int, default=100,
-                        help="Number of stocks to hold (default: 100)")
+    parser.add_argument("--sell-mode", choices=["open", "close"], default="open",
+                        help="Sell mode: open or close (default: open)")
+    parser.add_argument("--n-stocks", type=int, default=20,
+                        help="Number of stocks to hold (default: 20)")
     parser.add_argument("--vol-window", type=int, default=60,
                         help="Volatility rolling window in days (default: 60)")
     parser.add_argument("--excl-illiq", type=float, default=0.05,
@@ -234,7 +241,7 @@ def main() -> None:
     else:
         out_dir = root / "submissions"
         out_dir.mkdir(exist_ok=True)
-        out_path = out_dir / f"submission_sell_{args.sell_mode}.csv"
+        out_path = out_dir / f"submission_N{args.n_stocks}_sell_{args.sell_mode}.csv"
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     orders.to_csv(out_path, index=False)
