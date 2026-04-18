@@ -70,6 +70,7 @@ def run_backtest(
     sell_mode: str = "open",
     n_stocks: int = 20,
     initial_capital: float = 50_000_000.0,
+    weights: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     """
     Full portfolio simulator matching competition mechanics.
@@ -89,6 +90,11 @@ def run_backtest(
         Number of top-signal assets to hold each day.
     initial_capital : float
         Starting cash in RMB.
+    weights : pd.DataFrame or None
+        Optional allocation weight matrix (same shape as signal).
+        When provided, new buy cash is allocated proportionally to weights
+        instead of equally. Weights need not be normalised; they are
+        normalised across the new-buy set each day.
 
     Returns
     -------
@@ -226,12 +232,25 @@ def run_backtest(
 
         if to_buy:
             n_buys = len(to_buy)
-            per_asset_allocation = cash / n_buys
+
+            # Determine per-asset cash allocation
+            if weights is not None and prev_day in weights.index:
+                day_w = weights.loc[prev_day]
+                buy_weights = {a: float(day_w.get(a, 0.0)) for a in to_buy}
+                buy_weights = {a: w for a, w in buy_weights.items() if not math.isnan(w) and w > 0}
+                w_total = sum(buy_weights.values())
+                if w_total > 0:
+                    per_asset_alloc = {a: cash * buy_weights.get(a, 0.0) / w_total for a in to_buy}
+                else:
+                    per_asset_alloc = {a: cash / n_buys for a in to_buy}
+            else:
+                per_asset_alloc = {a: cash / n_buys for a in to_buy}
 
             for asset in to_buy:
                 buy_price = prices_today.get(asset, {}).get("vwap_0930_0935", float("nan"))
                 if math.isnan(buy_price) or buy_price <= 0:
                     continue
+                per_asset_allocation = per_asset_alloc[asset]
                 raw_shares = per_asset_allocation / buy_price
                 lots = int(raw_shares / 100)
                 shares = lots * 100
@@ -364,7 +383,13 @@ def main() -> None:
         sys.exit(1)
 
     print(f"Computing signal: {sig_name}...")
-    signal = REGISTRY[sig_name].compute(daily, lob if not lob.empty else None)
+    sig_module = REGISTRY[sig_name]
+    signal = sig_module.compute(daily, lob if not lob.empty else None)
+
+    wts = None
+    if hasattr(sig_module, "compute_weights"):
+        print(f"Computing weights: {sig_name}.compute_weights()...")
+        wts = sig_module.compute_weights(daily, lob if not lob.empty else None)
 
     print(f"Running backtest (sell_mode={args.sell_mode}, n_stocks={args.n_stocks})...")
     result = run_backtest(
@@ -372,6 +397,7 @@ def main() -> None:
         signal=signal,
         sell_mode=args.sell_mode,
         n_stocks=args.n_stocks,
+        weights=wts,
     )
 
     pv = result["portfolio_value"]
