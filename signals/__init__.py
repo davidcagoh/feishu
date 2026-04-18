@@ -17,6 +17,10 @@ from signals import (
     low_vol,
     stable_turnover_momentum,
     vol_managed,
+    inv_var_vol,
+    cluster_low_vol,
+    hmm_regime_vol,
+    vol_managed_120d,
 )
 
 REGISTRY = {
@@ -33,4 +37,8 @@ REGISTRY = {
     "low_vol": low_vol,
     "stable_turnover_momentum": stable_turnover_momentum,
     "vol_managed": vol_managed,
+    "inv_var_vol": inv_var_vol,
+    "cluster_low_vol": cluster_low_vol,
+    "hmm_regime_vol": hmm_regime_vol,
+    "vol_managed_120d": vol_managed_120d,
 }
