@@ -21,6 +21,7 @@ from signals import (
     cluster_low_vol,
     hmm_regime_vol,
     vol_managed_120d,
+    vol_managed_v2,
 )
 
 REGISTRY = {
@@ -41,4 +42,5 @@ REGISTRY = {
     "cluster_low_vol": cluster_low_vol,
     "hmm_regime_vol": hmm_regime_vol,
     "vol_managed_120d": vol_managed_120d,
+    "vol_managed_v2": vol_managed_v2,
 }

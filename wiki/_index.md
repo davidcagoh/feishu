@@ -2,10 +2,11 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-17  
+**Last updated:** 2026-04-18  
 **Papers indexed:** 17  
 **Concepts:** 7  
-**Ideas:** 20 signals catalogued, 10 implemented
+**Ideas:** 21 signals catalogued, 15 implemented  
+**Current best:** `vol_managed_v2` Score=0.3296 (CAGR=9.64%, SR=1.032, MDD=9.38%)
 
 ---
 
@@ -145,7 +146,7 @@ Adapt to low_vol: select stocks across clusters
 
 ---
 
-## Signal Leaderboard (2026-04-10, full 484-day eval)
+## Signal Leaderboard (2026-04-10, full 484-day eval — IC/IR metric)
 
 | Signal | Mean IC | IC Std | IR (ann.) | Hit Rate |
 |--------|---------|--------|-----------|----------|
@@ -162,6 +163,21 @@ Adapt to low_vol: select stocks across clusters
 
 **Key finding**: LOB IC series are **negatively correlated** with daily signal IC series (r = −0.24 to −0.57).
 They capture orthogonal market regimes. Combining them collapses IC_std from ~0.11 to 0.056 → IR nearly doubles.
+
+## Portfolio Backtest Leaderboard (2026-04-18, D001–D484, N=20, sell-at-open)
+
+> IC metrics above are misleading (close-to-close returns ≠ execution IC). Portfolio backtest is ground truth.
+
+| Signal | CAGR | SR | MDD | Score | Notes |
+|--------|------|----|-----|-------|-------|
+| ★ **vol_managed_v2** ← **SUBMISSION** | **9.64%** | **1.032** | **9.38%** | **0.3296** | w=30, σ=2.0 |
+| vol_managed (prior best) | 9.04% | 0.981 | 9.38% | 0.3116 | w=20, σ=3.0 |
+| inv_var_vol | 9.04% | 0.981 | 9.38% | 0.3116 | same selection as vol_managed |
+| hmm_regime_vol | 8.48% | 0.923 | 8.56% | 0.2937 | HMM over-blanks |
+| low_vol (N=20) | 8.81% | 0.961 | 9.38% | 0.3045 | baseline |
+| vol_managed_120d | 8.03% | 0.904 | 11.23% | 0.2792 | 120d window too slow |
+| cluster_low_vol | 5.18% | 0.441 | 10.76% | 0.1286 | K-means churn kills returns |
+| low_vol (N=100, sell-close) | 9.32% | 0.850 | 13.30% | 0.2636 | original baseline |
 
 ## Competition Mechanics (Section 7 of brief)
 
@@ -196,20 +212,22 @@ Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
 
 Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D001–D484).
 
-### Winner: Vol-Managed Minimum Volatility Portfolio (2026-04-11 update)
+### Winner: Vol-Managed v2 (2026-04-18, parameter-tuned)
 
-`signals/vol_managed.py` — Wang & Li (2024) overlay on low_vol: blanks signal on days where 20-day rolling market variance exceeds 3× its in-sample median. Backtest skips rebalancing on those days, holding the current low-vol portfolio.
+`signals/vol_managed_v2.py` — same mechanism as vol_managed but with overlay_window=30 and sigma_threshold=2.0, found via exhaustive 50+ combination grid search.
 
 **Best portfolio configuration (sell-at-open, N=20, D001–D484):**
 
 | Signal | CAGR | SR | MDD | Score |
 |--------|------|----|-----|-------|
-| **vol_managed** (w=20, th=3.0) | **9.04%** | **0.981** | **9.38%** | **0.3116** ← new best |
+| ★ **vol_managed_v2** (w=30, σ=2.0) | **9.64%** | **1.032** | **9.38%** | **0.3296** ← current best |
+| vol_managed (w=20, σ=3.0) | 9.04% | 0.981 | 9.38% | 0.3116 |
 | low_vol (baseline) | 8.81% | 0.961 | 9.38% | 0.3045 |
 
-- Score improvement: +0.0071 (+2.3% relative) over low_vol baseline
-- MDD unchanged — the drawdown in this dataset is structural, not vol-spike driven
-- SR improvement of +0.020 is the primary driver: fewer forced rebalances on bad days
+- Score improvement: +0.0180 (+5.8% relative) over vol_managed
+- +0.0251 (+8.2% relative) over low_vol baseline
+- SR=1.032 — first time exceeding 1.0; stronger blanking on real vol spikes
+- MDD=9.38% unchanged (structural drawdown, not reducible via vol filter)
 
 ### Previous best (sell-at-close, N=100, D001–D484):
 - `low_vol`: CAGR=+9.32%, SR=0.850, MDD=13.28% (reported 2026-04-10)
@@ -230,24 +248,36 @@ Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D0
 | low_amount_20d | Selects most illiquid micro-caps; individual stock blowups dominate (MDD=39.6%) |
 
 ### Infrastructure Built:
-- `eval/backtest.py` — full competition-mechanics simulator (T+1, lot-size, costs, metrics)
+- `eval/backtest.py` — full competition-mechanics simulator (T+1, lot-size, costs, metrics); supports optional `weights=` param for custom allocation
 - `signals/portfolio.py` — signal → buy/sell percentage converter
 - `signals/low_vol.py` — minimum volatility signal with liquidity filter
-- `signals/vol_managed.py` — Wang & Li (2024) vol-managed overlay on low_vol (**current best signal**)
-- `eval/generate_submission.py` — outputs competition CSV; ready for OOS run May 28
+- `signals/vol_managed.py` — Wang & Li (2024) vol-managed overlay on low_vol
+- `signals/vol_managed_v2.py` — tuned vol_managed (w=30, σ=2.0) — **current best (Score=0.3296)**
+- `signals/inv_var_vol.py` — 1/σ² allocation on vol_managed selection (no improvement)
+- `signals/cluster_low_vol.py` — K-means cluster-constrained selection (failed)
+- `signals/hmm_regime_vol.py` — HMM soft regime scaling (failed; too conservative)
+- `signals/vol_managed_120d.py` — 120d base window variant (failed; too slow)
+- `eval/generate_submission.py` — outputs competition CSV; now uses vol_managed_v2; ready for OOS run May 28
+- `wiki/results/strategy_overview.png` — comprehensive dashboard of all signal backtests
 - Repo: https://github.com/davidcagoh/feishu
 - Weekly paper search trigger: `trig_0172Cps6UTTyFq5uSKY3e5UP` (Wednesdays 5pm ET)
 
 ## Remaining before June 1
 
-1. (May 28) Run `python eval/generate_submission.py --daily data/daily_data_oos.parquet` when OOS data releases
+1. (May 28) Run when OOS data releases:
+   ```bash
+   python eval/generate_submission.py \
+       --daily data/daily_data_oos.parquet \
+       --sell-mode open --n-stocks 20 \
+       --output submissions/submission_v2_sell_open.csv
+   ```
 2. Verify CSV format matches competition brief §4 exactly
-3. Submit `submissions/submission_sell_close.csv`
+3. Submit `submissions/submission_v2_sell_open.csv`
 
 **Optional if time permits (diminishing returns):**
-- Run full-data LOB backtest for `lob_imbalance` (execution IC=+0.012, orthogonal to low_vol) — could combine for marginal uplift
-- Stress-test OOS regime: low_vol underperforms in bull markets (high-beta growth stocks dominate)
-- Verify sector concentration of the 100-stock portfolio (likely overweight utilities/financials)
+- MDD reduction: the structural 9.38% drawdown is resistant to vol-filtering; may require a different stock universe or position sizing approach
+- LOB signal overlay: execution IC=+0.012 orthogonal to low_vol — potential marginal uplift if combined carefully
+- Further fine-tuning: try thresh in {1.9, 1.95, 2.05} and window in {29, 31} to see if global optimum is sensitive
 
 ---
 
