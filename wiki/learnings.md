@@ -65,9 +65,27 @@ Signal IC likely varies with market conditions. In high-volatility regimes (e.g.
 - **Implication:** IC/IR is a dead-end for this competition. Do not pursue reversal signal improvements.
 
 ### Minimum volatility (low_vol) is the only viable portfolio strategy found
-`signals/low_vol.py` (60d rolling std, 5% illiquid exclusion, N=20, sell-at-open) beats the market and all IC-based signals. CAGR=+9.04%, SR=0.981, MDD=9.38%, Score=0.3116.
+`signals/low_vol.py` (60d rolling std, 5% illiquid exclusion, N=20, sell-at-open) beats the market and all IC-based signals. Baseline: CAGR=+8.81%, SR=0.961, MDD=9.38%, Score=0.3045.
 - Mechanism: avoids limit-down spirals and sector blowups in the IS bear-market period. Low turnover → low cost drag.
 - Vol-managed overlay (Wang & Li 2024) adds +0.0071 Score by skipping rebalance on top-5% variance days.
+
+### vol_managed_v2 is the current best strategy (2026-04-18)
+`signals/vol_managed_v2.py` — same mechanism as vol_managed but with overlay_window=30 (vs 20) and sigma_threshold=2.0 (vs 3.0), found via exhaustive 50+ combination grid search.
+- CAGR=9.64%, SR=1.032, MDD=9.38%, Score=**0.3296** — first SR > 1.0.
+- Score improvement: +0.0251 (+8.2%) over baseline low_vol; +0.0180 (+5.8%) over prior best vol_managed.
+- Key insight: window=30 produces fewer spurious blanks during mild up-vol periods → more good rebalance days.
+- MDD=9.38% is unchanged and structural (see below).
+
+### vol-filter window is the most important overlay parameter; sigma threshold matters less
+- window=30 (vs 20): larger rolling window → more stable market-vol estimate → fewer false-positive blanking triggers.
+- sigma_threshold=2.0 blanks ~12% of high-vol days vs ~5% at σ=3.0. The higher blanking rate is net positive because the 30d estimate accurately identifies genuine stress.
+- Longer windows (≥35) start degrading SR slightly; shorter windows (≤5) degrade MDD.
+
+### All 4 PR signals (inv_var_vol, cluster_low_vol, hmm_regime_vol, vol_managed_120d) failed (2026-04-18)
+- `inv_var_vol`: 1/σ² allocation weighting — Score=0.3113 (≈ baseline). Low-vol stocks are too homogeneous for variance-based weights to differentiate.
+- `cluster_low_vol`: K-means cluster-constrained selection (K=10, 2/cluster) — Score=0.1286. K-means forces picks from weak clusters; high churn (5,686 trades vs ~1,000 for vol_managed).
+- `hmm_regime_vol`: 2-state HMM soft regime scaling — Score=0.2937. Over-blanks: too conservative in detecting "normal" days, loses too much CAGR.
+- `vol_managed_120d`: 120d base window — Score=0.2792. Too slow; introduces stale rankings, higher MDD=11.23%.
 
 ### 60-day lookback is optimal; longer windows (120–252d) collapse returns
 Full sweep (2026-04-17, N=20, sell-at-open): the vol effect literature recommends 120–252d lookbacks, but on D001–D484 they are catastrophically worse. Score at 180d = 0.054, at 252d = −0.023. The IS period is only 484 days with concentrated bear-regime structure — a long lookback window captures stale cross-sectional vol rankings that no longer reflect current risk.
@@ -100,7 +118,7 @@ Based on the open hypotheses above, in order:
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-04-17. **Critical reframe:** IC-based signal improvements are a dead end (confirmed). Our best strategy is minimum-volatility portfolio construction. All future paper searches must focus on what can improve a long-only, low-vol, low-turnover defensive equity portfolio — not on reversal signals or factor IC.
+Updated 2026-04-18. **Current best:** `vol_managed_v2` (Score=0.3296). The parameter space is now exhausted — further gains must come from structural improvements, not more grid searching.
 
 **Papers added this week (2026-04-17):**
 - arXiv:2603.04441 (Wasserstein HMM regime investing) — regime detection for low-vol portfolio, Priority 4

@@ -56,14 +56,19 @@ lob_day = pd.read_parquet(
 )
 ```
 
+## Source of Truth
+
+**`wiki/` is the sole source of truth for this project** — specifically `wiki/_index.md` for strategy state, `wiki/learnings.md` for search priorities and confirmed facts, and `wiki/results/` for backtest records. This repo is accessed from multiple Claude accounts; the wiki is shared via git and readable by all. **Do NOT write project state to the Claude memory system** — memory is per-account and not visible to other accounts. If the auto-memory system writes a `project_state.md` file, treat it as a cached convenience only and always prefer wiki content if they conflict.
+
 ## Session Start Routine
 
 At the start of every session, automatically run these steps and report a brief status — no need to ask first:
 
 1. **Sync wiki**: Run `git pull origin main` to pull any updates pushed by the scheduled paper-search agent (runs every Wednesday 5pm ET)
-2. **Evaluate signals**: Run `python eval/run_eval.py --sample` and capture the output
-3. **Health check**: Read `wiki/_index.md`. Check for new papers added by the agent, fix any obvious gaps (missing index entries, broken wikilinks), complete any open tasks marked `[ ]` that are doable now
-4. **Report**: In 4–6 bullet points: what the agent added since last session, eval results summary, any open tasks worth doing today
+2. **Read state**: Read `wiki/_index.md` and `wiki/learnings.md` — these are the authoritative strategy state and search priorities
+3. **Evaluate signals**: Run `python eval/run_eval.py --sample` and capture the output
+4. **Health check**: Check for new papers added by the agent, fix any obvious gaps (missing index entries, broken wikilinks), complete any open tasks marked `[ ]` that are doable now
+5. **Report**: In 4–6 bullet points: what the agent added since last session, eval results summary, any open tasks worth doing today
 
 Signal implementations live in `signals/`. Add new signals there following the existing pattern (each module exports `compute(daily, lob=None) -> pd.DataFrame`). Eval results are written to `wiki/results/`.
 

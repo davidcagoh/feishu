@@ -143,6 +143,8 @@ Adapt to low_vol: select stocks across clusters
 | [pca_residual](results/pca_residual.md) | PCA residual signal: vol_rev IR 5.01→11.04 |
 | [ou_halflife](results/ou_halflife.md) | Median OU half-life = 0.31 days — daily OFI is i.i.d. |
 | [vol_managed_backtest](results/vol_managed_backtest.md) | Vol-managed overlay on low_vol: CAGR=9.04%, SR=0.981, MDD=9.38%, Score=0.3116 (+2.3% vs baseline) |
+| [strategy_gaps](results/strategy_gaps.png) | Weakness analysis dashboard: equity curve, drawdown, score sensitivity, gap descriptions, regime scenarios |
+| [strategy_presentation](results/strategy_presentation.png) | One-shot presentation anchor: competition goal, strategy pipeline, key metrics — David Goh |
 
 ---
 
