@@ -102,6 +102,41 @@ pca = PCA(n_components=10)
 
 ---
 
+## Factor Risk, Hedging, and the Fixed-Income Analogy
+
+The fixed income lecture (Lec 02) provides a direct analogy for equity factor risk management.
+
+**Yield curve PCA factors → Equity covariance PCA factors**
+
+| Fixed income factor | Description | Historical casualty |
+|---|---|---|
+| v₁ — parallel shift | All rates move together; duration risk | Silicon Valley Bank 2023 |
+| v₂ — steepening | Short end vs long end diverge | Orange County 1994 (v₁-neutral but v₂-exposed) |
+| v₃ — convexity | Belly of the curve vs ends | Beacon Hill hedge fund 2002 |
+
+**Equity analogue for our strategy:**
+
+| Equity factor | Description | Our exposure |
+|---|---|---|
+| v₁ — market beta | All stocks move with the market | HIGH — low_vol has beta ~0.5–0.7; long-only means always net long |
+| v₂ — sector/style tilt | Growth vs value, defensive vs cyclical | Moderate — low_vol concentrates in defensive sectors |
+| v₃ — idiosyncratic | Stock-specific | Low — diversified N=20 |
+
+**Key insight:** Our `low_vol` portfolio is "long duration" in equity terms. It earns the risk premium from being long equity, but has lower beta than the market. In bear regimes this is excellent; in bull regimes it structurally underperforms. This is *precisely* the Priority 1 OOS risk.
+
+**Tradeoff of hedging directional risk:**
+
+- In bonds: going duration-neutral (v₁-hedge) sacrifices yield carry — you give up the premium from being long rates
+- In equity: reducing market beta sacrifices the equity risk premium in bull markets
+- Full hedge requires shorts — **not available in our long-only competition setup**
+- Partial mitigation: regime-conditional beta management (bull → hold more / less-defensive stocks; bear → hold fewer / more defensive). This is the equity analogue of dynamic duration management.
+
+**Orange County lesson:** He was v₁-neutral but had massive v₂ exposure (steepening). Lesson for us: hedging one factor while inadvertently concentrating in another (e.g. adding "bull-market stocks" that create sector concentration) is dangerous. Any regime-adaptive tilt must also control sector/style concentration.
+
+**PCA residual connection:** Our confirmed result (vol_rev IR 5.01→11.04 after PCA residuals) is exactly "removing v₁ exposure from the signal" — projecting out the market-factor direction. This is signal-level directional hedging, not portfolio-level. It does not fix bull/bear sensitivity of the portfolio; it only removes market-factor contamination from the alpha signal.
+
+---
+
 ## Papers in This Wiki
 - [[attention-factors-stat-arb]] — Attention Factors: conditional factor model for arbitrage
 - [[ai-asset-pricing-models]] — AIPM: transformer-based SDF / factor model for pricing

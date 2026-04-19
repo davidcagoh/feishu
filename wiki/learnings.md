@@ -137,6 +137,8 @@ Our biggest OOS risk: D485–D726 could be a bull market where low-vol dramatica
 - Methods for blending defensive and growth exposure based on market-wide signals
 - Papers on low-vol strategy OOS degradation and how to mitigate it
 
+**Fixed income analogy (Lec 02):** Our low_vol portfolio = "long duration" in equity terms. v₁ (parallel shift) in bonds = market beta in equity; both strategies earn a risk premium by being exposed to this factor. Duration management in fixed income (dynamic hedging of v₁ exposure) is the direct analogue of what we need: regime-conditional beta management. Key constraint: full hedging requires shorts (unavailable). Partial fix: in detected bull regime, expand N or relax volatility screen to include slightly higher-beta stocks. See [[factor-models]] for full analogy and Orange County warning (hedging one factor while concentrating in another).
+
 **Priority 2 — MDD reduction in long-only portfolios**
 MDD=9.38% is structural — vol-spike blanking didn't move it. Search for:
 - Drawdown control in long-only equity portfolios (position sizing, stop-loss overlays, tail-risk hedging)
