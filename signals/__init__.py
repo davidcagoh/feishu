@@ -22,6 +22,13 @@ from signals import (
     hmm_regime_vol,
     vol_managed_120d,
     vol_managed_v2,
+    low_beta,
+    return_consistency,
+    rolling_sharpe,
+    trend_filtered_low_vol,
+    quality_composite,
+    erc_vol_managed,
+    trend_vol_v2,
 )
 
 REGISTRY = {
@@ -43,4 +50,11 @@ REGISTRY = {
     "hmm_regime_vol": hmm_regime_vol,
     "vol_managed_120d": vol_managed_120d,
     "vol_managed_v2": vol_managed_v2,
+    "low_beta": low_beta,
+    "return_consistency": return_consistency,
+    "rolling_sharpe": rolling_sharpe,
+    "trend_filtered_low_vol": trend_filtered_low_vol,
+    "quality_composite": quality_composite,
+    "erc_vol_managed": erc_vol_managed,
+    "trend_vol_v2": trend_vol_v2,
 }

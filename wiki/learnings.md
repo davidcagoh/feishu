@@ -59,6 +59,12 @@ Signal IC likely varies with market conditions. In high-volatility regimes (e.g.
 - **New paper evidence — Wasserstein HMM (2026-02/03):** Boukardagha (arXiv:2603.04441) shows that a strictly causal Wasserstein HMM feeding regime probabilities into a transaction-cost-aware MV optimiser achieves Sharpe 2.18 vs 1.59 equal-weight, MDD −5.43% vs −14.62% SPX. The key insight is that soft (probabilistic) regime conditioning outperforms both binary thresholds and hard regime-switching. Regime inference stability (not just detection accuracy) is the first-order driver of drawdown reduction.
 - **Revised status:** Partially addressed by paper evidence. Concrete next step: replace vol_managed's binary 3×-median threshold with a 2-state Wasserstein HMM stress probability (Signal #19). Still open: whether signal IC itself varies with regime (vs. just the portfolio sizing).
 
+### Any selection signal with a hidden momentum component fails catastrophically (2026-04-20)
+Full battery test of 6 new paradigms: `low_beta` (Score=−0.469), `return_consistency` (−0.683), `rolling_sharpe` (−0.877), `quality_composite` (0.061, contaminated by first two), all failed.
+- Root cause: every signal that rewards "recent positive performance" has a hidden momentum bias. In Chinese A-shares with T+1 and retail dominance, momentum reverts. Buying at vwap_0930_0935 the day after a stock had high hit-rate / high Sharpe / low beta makes you a bag-holder for the reversal.
+- **Rule**: any signal that would select stocks that recently went up is forbidden. Only direction-agnostic signals survive (low_vol, trend-filter as a negative screen, vol-blanking).
+- `trend_vol_v2` works because the trend filter is a *negative screen* (remove declining stocks) not a *positive screen* (select recent winners). The low-vol selection does the actual picking; the trend filter only prunes.
+
 ### IC/IR metrics do not predict portfolio performance — execution gap is the root cause
 **All IC-based reversal signals fail in actual portfolio construction.** Buy execution at `vwap_0930_0935` happens *after* the overnight gap has closed. Reversal alpha is earned close-to-open; by buy time the opportunity is gone. Improving IC (better signal decomposition, PCA whitening, LOB Kalman) does not fix this — it's a structural execution gap, not a signal quality problem.
 - Confirmed 2026-04-10: composite_full (IR=9.64) → CAGR=−54%; volume_reversal (IR=5.01) → CAGR=−54%.
@@ -68,6 +74,13 @@ Signal IC likely varies with market conditions. In high-volatility regimes (e.g.
 `signals/low_vol.py` (60d rolling std, 5% illiquid exclusion, N=20, sell-at-open) beats the market and all IC-based signals. Baseline: CAGR=+8.81%, SR=0.961, MDD=9.38%, Score=0.3045.
 - Mechanism: avoids limit-down spirals and sector blowups in the IS bear-market period. Low turnover → low cost drag.
 - Vol-managed overlay (Wang & Li 2024) adds +0.0071 Score by skipping rebalance on top-5% variance days.
+
+### trend_vol_v2 is the current best strategy (2026-04-20)
+`signals/trend_vol_v2.py` — vol_managed_v2 base + per-stock 35d positive-trend filter. Stocks whose adjusted close is lower than it was 35 trading days ago are excluded from selection.
+- CAGR=12.29%, SR=1.202, MDD=11.21%, Score=**0.3877** — +17.6% over prior best.
+- Mechanism: removes "quiet decliners" (value traps) from the low-vol universe. Low-vol captures stocks with stable prices, including stocks in slow structural decline. The trend filter keeps only stocks that are at least holding their price level.
+- Trend_window=35 is robust: the full 30–40d range beats vol_managed_v2 (0.32–0.39 range). IS-peak at 37d (Score=0.43) is a noise spike — excluded.
+- MDD rises 9.38%→11.21% because the filter reduces eligible universe on bear-market days (fewer stocks pass), reducing diversification.
 
 ### vol_managed_v2 is the current best strategy (2026-04-18)
 `signals/vol_managed_v2.py` — same mechanism as vol_managed but with overlay_window=30 (vs 20) and sigma_threshold=2.0 (vs 3.0), found via exhaustive 50+ combination grid search.

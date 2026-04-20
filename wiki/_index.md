@@ -2,11 +2,11 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-18  
+**Last updated:** 2026-04-20  
 **Papers indexed:** 17  
 **Concepts:** 7  
-**Ideas:** 21 signals catalogued, 15 implemented  
-**Current best:** `vol_managed_v2` Score=0.3296 (CAGR=9.64%, SR=1.032, MDD=9.38%)
+**Ideas:** 27 signals catalogued, 21 implemented  
+**Current best:** `trend_vol_v2` Score=0.3877 (CAGR=12.29%, SR=1.202, MDD=11.21%)
 
 ---
 
@@ -137,49 +137,41 @@ Adapt to low_vol: select stocks across clusters
 | File | Contents |
 |------|---------|
 | [sector_concentration](results/sector_concentration.md) | low_vol portfolio concentration: 12 core holdings, 7 effective independent bets, within-cluster r=0.43 |
-| [ic_correlation](results/ic_correlation.md) | IC correlation matrix across daily signals; 3 clusters identified |
-| [walk_forward](results/walk_forward.md) | Walk-forward validation: OOS IR=8.29 |
-| [regime_analysis](results/regime_analysis.md) | Up-market IR=9.97, down-market IR=6.49 |
-| [pca_residual](results/pca_residual.md) | PCA residual signal: vol_rev IR 5.01→11.04 |
-| [ou_halflife](results/ou_halflife.md) | Median OU half-life = 0.31 days — daily OFI is i.i.d. |
-| [vol_managed_backtest](results/vol_managed_backtest.md) | Vol-managed overlay on low_vol: CAGR=9.04%, SR=0.981, MDD=9.38%, Score=0.3116 (+2.3% vs baseline) |
+| [vol_managed_backtest](results/vol_managed_backtest.md) | Vol-managed overlay on low_vol: CAGR=9.04%, SR=0.981, MDD=9.38%, Score=0.3116 |
 | [strategy_gaps](results/strategy_gaps.png) | Weakness analysis dashboard: equity curve, drawdown, score sensitivity, gap descriptions, regime scenarios |
 | [strategy_presentation](results/strategy_presentation.png) | One-shot presentation anchor: competition goal, strategy pipeline, key metrics — David Goh |
 
+**Archived (IC era — superseded):** `wiki/archive/` contains ic_correlation, pca_residual, ou_halflife, walk_forward, regime_analysis. All computed using IC/IR metric; do not use for portfolio decisions.
+
 ---
 
-## Signal Leaderboard (2026-04-10, full 484-day eval — IC/IR metric)
+## IC Signal Leaderboard (archived — IC does not predict portfolio alpha)
 
-| Signal | Mean IC | IC Std | IR (ann.) | Hit Rate |
-|--------|---------|--------|-----------|----------|
-| **composite_full** (LOB+daily) | 0.0341 | **0.056** | **9.64** | **74%** |
-| composite_daily | 0.0361 | 0.113 | 5.08 | 66% |
-| volume_reversal | 0.0339 | 0.107 | 5.01 | 64% |
-| alpha191_071 | 0.0346 | 0.197 | 2.79 | 57% |
-| price_to_vwap | 0.0270 | 0.166 | 2.58 | 58% |
-| lob_imbalance | 0.0045 | 0.030 | 2.40 | 59% |
-| alpha191_046 | 0.0267 | 0.178 | 2.38 | 56% |
-| ofi_ou | 0.0081 | 0.072 | 1.77 | 55% |
-| short_term_reversal | 0.0191 | 0.165 | 1.84 | 57% |
-| ofi_matched_filter | 0.0059 | 0.089 | 1.05 | 53% |
+> Full IC/IR results archived in `wiki/archive/ic_correlation.md`. IC metrics use close-to-close returns;
+> execution buys at vwap_0930_0935 *after* the overnight gap has closed. All reversal signals fail in
+> backtesting (CAGR ≈ −54%). See "Critical Discovery" section below. Do not build IC-based signals.
 
-**Key finding**: LOB IC series are **negatively correlated** with daily signal IC series (r = −0.24 to −0.57).
-They capture orthogonal market regimes. Combining them collapses IC_std from ~0.11 to 0.056 → IR nearly doubles.
 
-## Portfolio Backtest Leaderboard (2026-04-18, D001–D484, N=20, sell-at-open)
+## Portfolio Backtest Leaderboard (2026-04-20, D001–D484, N=20, sell-at-open)
 
-> IC metrics above are misleading (close-to-close returns ≠ execution IC). Portfolio backtest is ground truth.
+> IC metrics are misleading (close-to-close returns ≠ execution IC). Portfolio backtest is ground truth.
 
 | Signal | CAGR | SR | MDD | Score | Notes |
 |--------|------|----|-----|-------|-------|
-| ★ **vol_managed_v2** ← **SUBMISSION** | **9.64%** | **1.032** | **9.38%** | **0.3296** | w=30, σ=2.0 |
-| vol_managed (prior best) | 9.04% | 0.981 | 9.38% | 0.3116 | w=20, σ=3.0 |
-| inv_var_vol | 9.04% | 0.981 | 9.38% | 0.3116 | same selection as vol_managed |
-| hmm_regime_vol | 8.48% | 0.923 | 8.56% | 0.2937 | HMM over-blanks |
+| ★ **trend_vol_v2** ← **SUBMISSION** | **12.29%** | **1.202** | **11.21%** | **0.3877** | tw=35, w=30, σ=2.0 |
+| vol_managed_v2 (prior best) | 9.64% | 1.032 | 9.38% | 0.3296 | w=30, σ=2.0 |
+| trend_filtered_low_vol | 11.07% | 1.097 | 11.21% | 0.3507 | tw=20 |
+| erc_vol_managed | 9.54% | 1.024 | 9.30% | 0.3268 | 1/σ weights, same selection |
+| vol_managed (prior) | 9.04% | 0.981 | 9.38% | 0.3116 | w=20, σ=3.0 |
 | low_vol (N=20) | 8.81% | 0.961 | 9.38% | 0.3045 | baseline |
+| hmm_regime_vol | 8.48% | 0.923 | 8.56% | 0.2937 | HMM over-blanks |
 | vol_managed_120d | 8.03% | 0.904 | 11.23% | 0.2792 | 120d window too slow |
 | cluster_low_vol | 5.18% | 0.441 | 10.76% | 0.1286 | K-means churn kills returns |
+| quality_composite | 4.06% | 0.342 | 24.08% | 0.0606 | -vol+hit+(-beta) contaminated by momentum |
 | low_vol (N=100, sell-close) | 9.32% | 0.850 | 13.30% | 0.2636 | original baseline |
+| low_beta | −16.1% | −0.994 | 39.15% | −0.469 | hidden momentum → reversal |
+| return_consistency | −28.7% | −1.408 | 52.63% | −0.683 | hit rate = momentum → reversal |
+| rolling_sharpe | −42.2% | −1.725 | 67.95% | −0.877 | same problem |
 
 ## Competition Mechanics (Section 7 of brief)
 
@@ -214,22 +206,22 @@ Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
 
 Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D001–D484).
 
-### Winner: Vol-Managed v2 (2026-04-18, parameter-tuned)
+### Winner: Trend-Vol v2 (2026-04-20, new signal battery)
 
-`signals/vol_managed_v2.py` — same mechanism as vol_managed but with overlay_window=30 and sigma_threshold=2.0, found via exhaustive 50+ combination grid search.
+`signals/trend_vol_v2.py` — vol_managed_v2 base + per-stock 35d trend filter. Stocks whose adjusted close is lower than 35 trading days ago are excluded from selection on that day. Found via systematic battery of 6 new strategy paradigms + trend_window parameter sweep.
 
 **Best portfolio configuration (sell-at-open, N=20, D001–D484):**
 
 | Signal | CAGR | SR | MDD | Score |
 |--------|------|----|-----|-------|
-| ★ **vol_managed_v2** (w=30, σ=2.0) | **9.64%** | **1.032** | **9.38%** | **0.3296** ← current best |
-| vol_managed (w=20, σ=3.0) | 9.04% | 0.981 | 9.38% | 0.3116 |
+| ★ **trend_vol_v2** (tw=35) | **12.29%** | **1.202** | **11.21%** | **0.3877** ← current best |
+| vol_managed_v2 (prior best) | 9.64% | 1.032 | 9.38% | 0.3296 |
 | low_vol (baseline) | 8.81% | 0.961 | 9.38% | 0.3045 |
 
-- Score improvement: +0.0180 (+5.8% relative) over vol_managed
-- +0.0251 (+8.2% relative) over low_vol baseline
-- SR=1.032 — first time exceeding 1.0; stronger blanking on real vol spikes
-- MDD=9.38% unchanged (structural drawdown, not reducible via vol filter)
+- Score improvement: +0.0581 (+17.6% relative) over vol_managed_v2
+- MDD rises from 9.38% → 11.21% (trend filter reduces eligible universe on down-trending days → less diversification)
+- IS-peak at tw=37 (Score=0.4310) excluded — noise spike (36: 0.3743, 38: 0.3690 are much lower; not robust)
+- Window range 30–40 all beat vol_managed_v2; tw=35 chosen as plateau-stable conservative estimate
 
 ### Previous best (sell-at-close, N=100, D001–D484):
 - `low_vol`: CAGR=+9.32%, SR=0.850, MDD=13.28% (reported 2026-04-10)
@@ -266,20 +258,21 @@ Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D0
 
 ## Remaining before June 1
 
-1. (May 28) Run when OOS data releases:
+1. Update `eval/generate_submission.py` to use `trend_vol_v2` instead of `vol_managed_v2`
+2. (May 28) Run when OOS data releases:
    ```bash
    python eval/generate_submission.py \
        --daily data/daily_data_oos.parquet \
        --sell-mode open --n-stocks 20 \
-       --output submissions/submission_v2_sell_open.csv
+       --output submissions/submission_v3_trend_vol.csv
    ```
-2. Verify CSV format matches competition brief §4 exactly
-3. Submit `submissions/submission_v2_sell_open.csv`
+3. Verify CSV format matches competition brief §4 exactly
+4. Submit `submissions/submission_v3_trend_vol.csv`
 
-**Optional if time permits (diminishing returns):**
-- MDD reduction: the structural 9.38% drawdown is resistant to vol-filtering; may require a different stock universe or position sizing approach
-- LOB signal overlay: execution IC=+0.012 orthogonal to low_vol — potential marginal uplift if combined carefully
-- Further fine-tuning: try thresh in {1.9, 1.95, 2.05} and window in {29, 31} to see if global optimum is sensitive
+**Optional if time permits:**
+- Investigate why the 35d trend window helps: how many stocks are filtered out on an average day? Does it vary by market regime?
+- Test `trend_vol_v2` with ERC weights (`erc_vol_managed` approach) — could improve SR further
+- Consider whether MDD=11.21% is acceptable vs keeping vol_managed_v2 (MDD=9.38%) as backup submission
 
 ---
 

@@ -15,24 +15,18 @@ Usage:
         --n-stocks 20 \\
         --output submissions/TEAMID_sell_open.csv
 
-Strategy: vol_managed_v2 (tuned vol-managed overlay on low_vol).
-Parameters: overlay_window=30, sigma_threshold=2.0, base_window=60, excl_illiq=5%.
+Strategy: trend_vol_v2 (vol_managed_v2 base + 35d positive-trend filter per stock).
+Parameters: trend_window=35, overlay_window=30, sigma_threshold=2.0, base_window=60, excl_illiq=5%.
 N=20 stocks, sell-at-open.
 
-vol_managed_v2 improves on vol_managed (w=20, σ=3.0) via exhaustive grid search:
-  overlay_window=30 (slower, more stable market-vol estimate → fewer false blanks)
-  sigma_threshold=2.0 (blanks ~12% of high-vol days vs ~5% at σ=3.0)
+trend_vol_v2 adds a per-stock trend filter to vol_managed_v2: stocks whose adjusted
+close is lower than 35 trading days ago are excluded. This removes 'quiet decliners'
+(value traps) from the low-vol universe without introducing momentum bias.
 
-In-sample result (D001–D484, N=20, sell-at-open) — confirmed best after full sweep:
-  vol_managed_v2 (w=30, σ=2.0): CAGR=+9.64%, SR=+1.032, MDD=9.38%, Score=0.3296
-  vol_managed   (w=20, σ=3.0): CAGR=+9.04%, SR=+0.981, MDD=9.38%, Score=0.3116
-  low_vol       (baseline):     CAGR=+8.81%, SR=+0.961, MDD=9.38%, Score=0.3045
-
-Grid search (2026-04-18): 50+ combinations of N×window×threshold×excl_illiq×sell_mode.
-  N=20 confirmed optimal across all configs.
-  sell-at-open is essential (sell-at-close gives MDD=11.83%, much worse).
-  base_window=60 is optimal (40d too noisy, 75-90d too slow).
-  excl_illiq=0.05 is optimal (removing bottom 5% illiquid stocks).
+In-sample result (D001–D484, N=20, sell-at-open):
+  trend_vol_v2   (tw=35): CAGR=+12.29%, SR=+1.202, MDD=11.21%, Score=0.3877
+  vol_managed_v2 (prior): CAGR=+9.64%,  SR=+1.032, MDD=9.38%,  Score=0.3296
+  low_vol        (base):  CAGR=+8.81%,  SR=+0.961, MDD=9.38%,  Score=0.3045
 """
 
 from __future__ import annotations
@@ -45,8 +39,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-# vol_managed_v2: tuned overlay (window=30, sigma=2.0) — our best signal (Score=0.3296)
-from signals import vol_managed_v2 as signal_module
+# trend_vol_v2: vol_managed_v2 base + 35d trend filter — best signal (Score=0.3877)
+from signals import trend_vol_v2 as signal_module
 
 
 # ── Core generator ─────────────────────────────────────────────────────────────
@@ -79,8 +73,7 @@ def generate_orders(
     if sell_mode not in ("open", "close"):
         raise ValueError(f"sell_mode must be 'open' or 'close', got {sell_mode!r}")
 
-    signal = signal_module.compute(daily, lob=None, base_window=vol_window, excl_illiq=excl_illiq,
-                                    window=30, sigma_threshold=2.0)
+    signal = signal_module.compute(daily, lob=None, trend_window=35)
     days = sorted(signal.index)
 
     # Filter: skip assets with missing buy price on a given day
@@ -208,7 +201,7 @@ def main() -> None:
     days = sorted(daily["trade_day_id"].unique())
     print(f"  {len(days)} trading days ({days[0]}–{days[-1]}), {daily['asset_id'].nunique()} assets")
 
-    print(f"\nGenerating orders: vol_managed_v2(window=30, sigma=2.0, base_window={args.vol_window}, excl_illiq={args.excl_illiq}), N={args.n_stocks}, sell={args.sell_mode}")
+    print(f"\nGenerating orders: trend_vol_v2(trend_window=35), N={args.n_stocks}, sell={args.sell_mode}")
     orders = generate_orders(
         daily,
         sell_mode=args.sell_mode,
