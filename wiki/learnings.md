@@ -75,12 +75,13 @@ Full battery test of 6 new paradigms: `low_beta` (Score=−0.469), `return_consi
 - Mechanism: avoids limit-down spirals and sector blowups in the IS bear-market period. Low turnover → low cost drag.
 - Vol-managed overlay (Wang & Li 2024) adds +0.0071 Score by skipping rebalance on top-5% variance days.
 
-### trend_vol_v2 is the current best strategy (2026-04-20)
-`signals/trend_vol_v2.py` — vol_managed_v2 base + per-stock 35d positive-trend filter. Stocks whose adjusted close is lower than it was 35 trading days ago are excluded from selection.
-- CAGR=12.29%, SR=1.202, MDD=11.21%, Score=**0.3877** — +17.6% over prior best.
-- Mechanism: removes "quiet decliners" (value traps) from the low-vol universe. Low-vol captures stocks with stable prices, including stocks in slow structural decline. The trend filter keeps only stocks that are at least holding their price level.
-- Trend_window=35 is robust: the full 30–40d range beats vol_managed_v2 (0.32–0.39 range). IS-peak at 37d (Score=0.43) is a noise spike — excluded.
-- MDD rises 9.38%→11.21% because the filter reduces eligible universe on bear-market days (fewer stocks pass), reducing diversification.
+### trend_vol_v3 is the current best strategy (2026-04-20)
+`signals/trend_vol_v3.py` — trend_vol_v2 selection (low-vol + 35d trend filter + vol-blanking) with 1/σ ERC allocation weights.
+- CAGR=12.55%, SR=1.231, MDD=11.04%, Score=**0.3981** — +20.8% over vol_managed_v2.
+- Selection mechanism (trend_vol_v2 base): removes "quiet decliners" from the low-vol universe. The 35d trend filter keeps only stocks that are at least holding their price level. Trend_window=35 chosen as robust plateau (30–40d range all beat vol_managed_v2; IS-peak at 37d excluded as noise spike).
+- ERC weighting: 1/σᵢ allocation concentrates capital in the quietest holdings within the already-filtered universe. Adds +2.7% relative Score vs equal weight.
+- N=20 optimal (N-sweep confirmed; equal-weight N=18 also competitive at Score=0.3936).
+- MDD 9.38%→11.04%: trend filter reduces eligible universe on bear-market days → less diversification.
 
 ### vol_managed_v2 is the current best strategy (2026-04-18)
 `signals/vol_managed_v2.py` — same mechanism as vol_managed but with overlay_window=30 (vs 20) and sigma_threshold=2.0 (vs 3.0), found via exhaustive 50+ combination grid search.

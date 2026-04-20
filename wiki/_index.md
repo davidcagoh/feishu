@@ -5,8 +5,8 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 **Last updated:** 2026-04-20  
 **Papers indexed:** 17  
 **Concepts:** 7  
-**Ideas:** 27 signals catalogued, 21 implemented  
-**Current best:** `trend_vol_v2` Score=0.3877 (CAGR=12.29%, SR=1.202, MDD=11.21%)
+**Ideas:** 28 signals catalogued, 22 implemented  
+**Current best:** `trend_vol_v3` Score=0.3981 (CAGR=12.55%, SR=1.231, MDD=11.04%)
 
 ---
 
@@ -158,7 +158,8 @@ Adapt to low_vol: select stocks across clusters
 
 | Signal | CAGR | SR | MDD | Score | Notes |
 |--------|------|----|-----|-------|-------|
-| ★ **trend_vol_v2** ← **SUBMISSION** | **12.29%** | **1.202** | **11.21%** | **0.3877** | tw=35, w=30, σ=2.0 |
+| ★ **trend_vol_v3** ← **SUBMISSION** | **12.55%** | **1.231** | **11.04%** | **0.3981** | tw=35, ERC weights, N=20 |
+| trend_vol_v2 | 12.29% | 1.202 | 11.21% | 0.3877 | tw=35, equal weight |
 | vol_managed_v2 (prior best) | 9.64% | 1.032 | 9.38% | 0.3296 | w=30, σ=2.0 |
 | trend_filtered_low_vol | 11.07% | 1.097 | 11.21% | 0.3507 | tw=20 |
 | erc_vol_managed | 9.54% | 1.024 | 9.30% | 0.3268 | 1/σ weights, same selection |
@@ -206,22 +207,24 @@ Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
 
 Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D001–D484).
 
-### Winner: Trend-Vol v2 (2026-04-20, new signal battery)
+### Winner: Trend-Vol v3 (2026-04-20, ERC weighting)
 
-`signals/trend_vol_v2.py` — vol_managed_v2 base + per-stock 35d trend filter. Stocks whose adjusted close is lower than 35 trading days ago are excluded from selection on that day. Found via systematic battery of 6 new strategy paradigms + trend_window parameter sweep.
+`signals/trend_vol_v3.py` — trend_vol_v2 selection (low-vol + 35d trend filter + vol-blanking) with 1/σ ERC allocation weights. N-sweep confirmed N=20 optimal with ERC; equal-weight N=18 also tested (Score=0.3936). Found via N-sweep + ERC experiments after the battery.
 
 **Best portfolio configuration (sell-at-open, N=20, D001–D484):**
 
 | Signal | CAGR | SR | MDD | Score |
 |--------|------|----|-----|-------|
-| ★ **trend_vol_v2** (tw=35) | **12.29%** | **1.202** | **11.21%** | **0.3877** ← current best |
+| ★ **trend_vol_v3** (tw=35, ERC, N=20) | **12.55%** | **1.231** | **11.04%** | **0.3981** ← current best |
+| trend_vol_v2 (tw=35, equal, N=20) | 12.29% | 1.202 | 11.21% | 0.3877 |
+| trend_vol_v2 (tw=35, equal, N=18) | 12.25% | 1.214 | 10.30% | 0.3936 |
 | vol_managed_v2 (prior best) | 9.64% | 1.032 | 9.38% | 0.3296 |
 | low_vol (baseline) | 8.81% | 0.961 | 9.38% | 0.3045 |
 
-- Score improvement: +0.0581 (+17.6% relative) over vol_managed_v2
-- MDD rises from 9.38% → 11.21% (trend filter reduces eligible universe on down-trending days → less diversification)
-- IS-peak at tw=37 (Score=0.4310) excluded — noise spike (36: 0.3743, 38: 0.3690 are much lower; not robust)
-- Window range 30–40 all beat vol_managed_v2; tw=35 chosen as plateau-stable conservative estimate
+- Score improvement: +0.0685 (+20.8% relative) over vol_managed_v2
+- ERC (1/σ) weights add +2.7% relative over equal-weight; shifts capital to quietest names within the filtered universe
+- MDD 11.04% — slight improvement from equal-weight 11.21% due to ERC concentrating in least-volatile stocks
+- IS-peak at tw=37 (Score=0.4310 equal-weight) excluded — noise spike; not validated with ERC
 
 ### Previous best (sell-at-close, N=100, D001–D484):
 - `low_vol`: CAGR=+9.32%, SR=0.850, MDD=13.28% (reported 2026-04-10)

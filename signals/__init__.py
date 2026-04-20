@@ -29,6 +29,7 @@ from signals import (
     quality_composite,
     erc_vol_managed,
     trend_vol_v2,
+    trend_vol_v3,
 )
 
 REGISTRY = {
@@ -57,4 +58,5 @@ REGISTRY = {
     "quality_composite": quality_composite,
     "erc_vol_managed": erc_vol_managed,
     "trend_vol_v2": trend_vol_v2,
+    "trend_vol_v3": trend_vol_v3,
 }

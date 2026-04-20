@@ -15,18 +15,18 @@ Usage:
         --n-stocks 20 \\
         --output submissions/TEAMID_sell_open.csv
 
-Strategy: trend_vol_v2 (vol_managed_v2 base + 35d positive-trend filter per stock).
-Parameters: trend_window=35, overlay_window=30, sigma_threshold=2.0, base_window=60, excl_illiq=5%.
+Strategy: trend_vol_v3 (trend_vol_v2 selection + ERC weights).
+Parameters: trend_window=35, overlay_window=30, sigma_threshold=2.0, base_window=60, excl_illiq=5%, weights=1/σ.
 N=20 stocks, sell-at-open.
 
-trend_vol_v2 adds a per-stock trend filter to vol_managed_v2: stocks whose adjusted
-close is lower than 35 trading days ago are excluded. This removes 'quiet decliners'
-(value traps) from the low-vol universe without introducing momentum bias.
+trend_vol_v3 = trend_vol_v2 stock selection + inverse-volatility (ERC) capital allocation.
+Stock selection: low-vol stocks with positive 35d trend + vol-blanking on stress days.
+Allocation: 1/σᵢ per stock (each position contributes equal risk).
 
 In-sample result (D001–D484, N=20, sell-at-open):
-  trend_vol_v2   (tw=35): CAGR=+12.29%, SR=+1.202, MDD=11.21%, Score=0.3877
-  vol_managed_v2 (prior): CAGR=+9.64%,  SR=+1.032, MDD=9.38%,  Score=0.3296
-  low_vol        (base):  CAGR=+8.81%,  SR=+0.961, MDD=9.38%,  Score=0.3045
+  trend_vol_v3 (tw=35, ERC): CAGR=+12.55%, SR=+1.231, MDD=11.04%, Score=0.3981
+  trend_vol_v2 (tw=35, eq):  CAGR=+12.29%, SR=+1.202, MDD=11.21%, Score=0.3877
+  vol_managed_v2 (prior):    CAGR=+9.64%,  SR=+1.032, MDD=9.38%,  Score=0.3296
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-# trend_vol_v2: vol_managed_v2 base + 35d trend filter — best signal (Score=0.3877)
-from signals import trend_vol_v2 as signal_module
+# trend_vol_v3: trend_vol_v2 selection + ERC weights — best signal (Score=0.3981)
+from signals import trend_vol_v3 as signal_module
 
 
 # ── Core generator ─────────────────────────────────────────────────────────────
@@ -74,6 +74,11 @@ def generate_orders(
         raise ValueError(f"sell_mode must be 'open' or 'close', got {sell_mode!r}")
 
     signal = signal_module.compute(daily, lob=None, trend_window=35)
+    # ERC weights for capital allocation
+    if hasattr(signal_module, "compute_weights"):
+        weights = signal_module.compute_weights(daily, lob=None)
+    else:
+        weights = None
     days = sorted(signal.index)
 
     # Filter: skip assets with missing buy price on a given day
@@ -105,17 +110,28 @@ def generate_orders(
             # Not enough valid assets — hold existing portfolio, no orders
             continue
 
-        top_n = set(prev_sig.nlargest(n_stocks).index)
+        top_n_list = prev_sig.nlargest(n_stocks).index.tolist()
+        top_n = set(top_n_list)
 
-        # Equal weight across selected assets
-        buy_pct = 1.0 / n_stocks
+        # ERC weights if available, otherwise equal weight
+        if weights is not None and prev_day in weights.index:
+            day_w = weights.loc[prev_day]
+            raw_w = {a: float(day_w.get(a, 0.0)) for a in top_n_list}
+            raw_w = {a: w for a, w in raw_w.items() if w > 0 and not (w != w)}
+            total_w = sum(raw_w.values())
+            if total_w > 0:
+                asset_buy_pct = {a: raw_w.get(a, 0.0) / total_w for a in top_n_list}
+            else:
+                asset_buy_pct = {a: 1.0 / n_stocks for a in top_n_list}
+        else:
+            asset_buy_pct = {a: 1.0 / n_stocks for a in top_n_list}
 
         # Buys: selected assets not already held (or partial rebalance)
-        for asset in top_n:
+        for asset in top_n_list:
             records.append({
                 "trade_day_id": day,
                 "asset_id": asset,
-                "buy_percentage": buy_pct,
+                "buy_percentage": asset_buy_pct[asset],
                 "sell_percentage": 0.0,
             })
 
@@ -201,7 +217,7 @@ def main() -> None:
     days = sorted(daily["trade_day_id"].unique())
     print(f"  {len(days)} trading days ({days[0]}–{days[-1]}), {daily['asset_id'].nunique()} assets")
 
-    print(f"\nGenerating orders: trend_vol_v2(trend_window=35), N={args.n_stocks}, sell={args.sell_mode}")
+    print(f"\nGenerating orders: trend_vol_v3(trend_window=35, ERC weights), N={args.n_stocks}, sell={args.sell_mode}")
     orders = generate_orders(
         daily,
         sell_mode=args.sell_mode,
