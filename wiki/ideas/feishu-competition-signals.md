@@ -554,43 +554,34 @@ def cluster_constrained_selection(daily, trade_day, N=20, n_clusters=10, lookbac
 
 ## Priority Order for Implementation
 
-1. ~~LOB imbalance~~ ✅ IC=0.005, IR=2.40 (full LOB eval, 2026-04-10)
-2. ~~Market-cap normalised OFI~~ ✅ IC=0.006, IR=1.05 (full LOB eval, 2026-04-10)
-3. ~~Short-term reversal~~ ✅ IC=0.019, IR=1.84
-4. ~~Alpha191 f046 + f071~~ ✅ IC=0.027/IR=2.38 and IC=0.035/IR=2.79 (2026-04-10, full 484-day)
-5. ~~Signal combination~~ ✅ composite_daily IR=5.08, composite_full IR=9.64 (LOB+daily; IC_std halved)
-6. ~~PCA residual OU signal~~ ✅ vol_rev IR 5.01→11.04 vs idiosyncratic target; LOB degrades in PCA residual space
-7. ~~OU quasi-Sharpe OFI signal (#12)~~ ✅ ofi_ou IR=1.77; median OU half-life=0.31d — OFI i.i.d. at daily frequency
-8. Regime-conditional LOB signal — adds the regime insight from DRL paper (optional, diminishing returns)
-9. Depth slope / shape signals — novel, exploratory (optional)
-10. **Cluster-constrained low-vol (#20)** — `[ ] untested` — K-means diversification fix; may reduce MDD
-11. **HMM soft regime overlay (#19)** — `[ ] untested` — replace binary vol threshold with Wasserstein HMM stress prob
-12. **Longer lookback low-vol (#13)** — `[ ] untested` — quick win; swap 60d for 120d in low_vol.py
-13. **VMP inverse-variance weighting (#14)** — `[ ] untested` — replace equal-weight within portfolio
-14. **Market-regime N scaling (#15)** — `[ ] untested` — expand/contract N based on market vol level
-15. **MTP2-GGM whitened PCA residual (#16)** — `[ ] untested` — adds precision whitening after PCA; extends pca_residual result
-16. **Kalman-smoothed LOB mid-price (#17)** — `[ ] untested` — full-trajectory intraday model for LOB component
-17. **Cluster-lag cross-asset signal (#18)** — `[ ] untested` — within-universe bipartite graph proxy
+> Updated 2026-04-20. IC-era signals (1–12) are all complete and ruled out — IC does not predict portfolio alpha due to execution gap. Portfolio backtest is the only valid evaluation metric. Current best: `trend_vol_v2` Score=0.3877.
+
+**COMPLETE / RULED OUT (IC era — do not revisit):**
+- ~~1–9: LOB imbalance, OFI, short-term reversal, Alpha191, composites, PCA residual, OU OFI~~ ✅ All fail in portfolio execution (CAGR ≈ −54%)
+
+**FAILED IN PORTFOLIO BACKTEST (tested 2026-04-18):**
+- ~~13. Longer lookback (120d/252d)~~ ❌ Score collapsed to 0.054–negative; IS period too short for long lookbacks
+- ~~14. VMP inverse-variance weighting~~ ❌ `inv_var_vol` Score=0.3113 ≈ vol_managed baseline; low-vol universe too homogeneous
+- ~~19. Wasserstein HMM soft regime overlay~~ ❌ `hmm_regime_vol` Score=0.2937; over-blanks, loses CAGR
+- ~~20. Cluster-constrained low-vol~~ ❌ `cluster_low_vol` Score=0.1286; K-means forces picks from weak clusters, high churn
+
+**FAILED IN PORTFOLIO BACKTEST (tested 2026-04-20 battery):**
+- ~~low_beta~~ ❌ Score=−0.469; hidden momentum → reversal at execution
+- ~~return_consistency~~ ❌ Score=−0.683; hit rate = recent uptrend = momentum → reversal
+- ~~rolling_sharpe~~ ❌ Score=−0.877; same execution-gap mechanism
+- ~~quality_composite~~ ❌ Score=0.061; contaminated by momentum-biased components
+
+**OPEN — 2 meaningful experiments remaining:**
+
+1. **N-sweep on trend_vol_v2** — N=20 confirmed for vol_managed_v2 but trend filter narrows universe; optimal N may differ. Try N=10, 15, 20, 25, 30.
+
+2. **ERC weights on trend_vol_v2** — Combine `trend_vol_v2.compute()` selection with `1/σ` allocation weights from `erc_vol_managed.compute_weights()`. The trend-filtered universe is more homogeneous, which might respond differently to ERC than the unfiltered universe.
+
+**RULED OUT (do not implement, wrong objective):**
+- 15 (regime N scaling), 16 (MTP2-GGM whitened PCA), 17 (Kalman LOB), 18 (cluster-lag) — all IC/signal-quality improvements; IC does not predict portfolio alpha.
 
 ---
 
-## Full-Sample Eval Results (2026-04-10, 484 days)
+## Signal Evaluation Note
 
-| Signal | Mean IC | IC Std | IR (ann.) | Hit Rate |
-|--------|---------|--------|-----------|----------|
-| **composite_full** (LOB+daily) | 0.0341 | 0.056 | **9.64** | **74%** |
-| composite_daily | 0.0361 | 0.113 | 5.08 | 66% |
-| volume_reversal | 0.0339 | 0.1074 | 5.01 | 64% |
-| alpha191_071 | 0.0346 | 0.1966 | 2.79 | 57% |
-| price_to_vwap | 0.0270 | 0.1664 | 2.58 | 58% |
-| lob_imbalance | 0.0045 | 0.030 | 2.40 | 59% |
-| alpha191_046 | 0.0267 | 0.1781 | 2.38 | 56% |
-| ofi_ou | 0.0081 | 0.072 | 1.77 | 55% |
-| short_term_reversal | 0.0191 | 0.1652 | 1.84 | 57% |
-| ofi_matched_filter | 0.0059 | 0.089 | 1.05 | 53% |
-
-**Key observations:**
-- LOB IC series are **negatively correlated** with daily signal IC series (r = −0.24 to −0.57) — they capture orthogonal market regimes
-- Combining LOB + daily signals collapses IC_std from ~0.11 to 0.056 → IR nearly doubles (composite_full IR=9.64)
-- **IC ≠ portfolio alpha**: all reversal/IC signals fail in execution (see Critical Discovery in `_index.md`). The winning portfolio strategy is `signals/low_vol.py` (min-volatility, CAGR=+9.32%, SR=0.85)
-- `volume_reversal` has the highest daily-only IR (5.01) due to its low IC std — more consistent day-to-day
+IC/IR metrics are meaningless for this competition. Portfolio backtest with exact competition mechanics (`eval/backtest.py`) is the only valid evaluation. Do not build signals optimised for IC. See "Critical Discovery" in `wiki/_index.md`.

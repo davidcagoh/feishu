@@ -120,18 +120,21 @@ Liu et al. (SSRN:5130681, Feb 2025) provides a definitive mechanism: Chinese sto
 
 ## What the Next Experiments Should Prioritise
 
-Based on the open hypotheses above, in order:
+Updated 2026-04-20. Current best: `trend_vol_v2` Score=0.3877. IC-era experiments are all complete or archived.
 
-1. **IC correlation matrix** (hypothesis #1) — highest leverage, costs nothing, determines whether we combine signals
-2. **PCA residual signal** (hypothesis #4) — the most novel direction, tests cross-asset information
-3. **Intraday LOB split** (hypothesis #3) — directly extends work we've already done on LOB
-4. **Momentum check** (hypothesis #2) — sanity check; quick to build, probably negative result but important to know
+1. **N-sweep on trend_vol_v2** — The trend filter narrows the eligible universe on down-trending days. N=20 was confirmed optimal for vol_managed_v2 but should be re-confirmed with the trend filter active. Try N=10, 15, 20, 25, 30. Cheap, ~20 min.
+
+2. **ERC weights on trend_vol_v2** — `erc_vol_managed` on `vol_managed_v2` base underperformed slightly (0.3268 vs 0.3296), but the trend filter changes portfolio composition. With a narrower, more homogeneous universe after filtering, ERC might behave differently. Combine `trend_vol_v2.compute()` with `erc_vol_managed.compute_weights()`. Cheap, ~10 min.
+
+3. **Soften the trend threshold** — currently `trend > 0` (strictly positive 35d return). Try `trend > -0.03` (allow up to −3% drift). In deep bear-market periods many low-vol stocks fail the strict threshold → portfolio narrows → MDD rises. A softer threshold might recover diversification on bad days. Tests the 11.21% MDD penalty.
+
+4. **Nothing else** — the main space (lookback, vol overlay, trend window, N, weighting) is exhausted. Further tuning is overfitting. The remaining OOS risk is structural (bear IS vs unknown OOS regime), not tunable from IS data.
 
 ---
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-04-18. **Current best:** `vol_managed_v2` (Score=0.3296). The parameter space is now exhausted — further gains must come from structural improvements, not more grid searching.
+Updated 2026-04-20. **Current best:** `trend_vol_v2` (Score=0.3877). IS parameter space is exhausted — further gains require structural improvements or OOS regime insight.
 
 **Papers added this week (2026-04-17):**
 - arXiv:2603.04441 (Wasserstein HMM regime investing) — regime detection for low-vol portfolio, Priority 4
@@ -153,7 +156,7 @@ Our biggest OOS risk: D485–D726 could be a bull market where low-vol dramatica
 **Fixed income analogy (Lec 02):** Our low_vol portfolio = "long duration" in equity terms. v₁ (parallel shift) in bonds = market beta in equity; both strategies earn a risk premium by being exposed to this factor. Duration management in fixed income (dynamic hedging of v₁ exposure) is the direct analogue of what we need: regime-conditional beta management. Key constraint: full hedging requires shorts (unavailable). Partial fix: in detected bull regime, expand N or relax volatility screen to include slightly higher-beta stocks. See [[factor-models]] for full analogy and Orange County warning (hedging one factor while concentrating in another).
 
 **Priority 2 — MDD reduction in long-only portfolios**
-MDD=9.38% is structural — vol-spike blanking didn't move it. Search for:
+MDD=11.21% with trend_vol_v2 (rose from 9.38% when trend filter narrows universe on down days). Search for:
 - Drawdown control in long-only equity portfolios (position sizing, stop-loss overlays, tail-risk hedging)
 - Portfolio insurance for long-only constraint (no leverage, no shorts)
 - Maximum drawdown minimisation as a portfolio objective (not just variance)
