@@ -121,15 +121,14 @@ Liu et al. (SSRN:5130681, Feb 2025) provides a definitive mechanism: Chinese sto
 
 ## What the Next Experiments Should Prioritise
 
-Updated 2026-04-20. Current best: `trend_vol_v2` Score=0.3877. IC-era experiments are all complete or archived.
+Updated 2026-04-20. Current best: `trend_vol_v3` Score=0.3981. IS parameter space is exhausted.
 
-1. **N-sweep on trend_vol_v2** — The trend filter narrows the eligible universe on down-trending days. N=20 was confirmed optimal for vol_managed_v2 but should be re-confirmed with the trend filter active. Try N=10, 15, 20, 25, 30. Cheap, ~20 min.
+~~1. N-sweep on trend_vol_v2~~ — **Done.** N=20 confirmed optimal with ERC weighting (trend_vol_v3).
+~~2. ERC weights on trend_vol_v2~~ — **Done.** trend_vol_v3 = trend_vol_v2 + 1/σ ERC weights. Score 0.3877→0.3981 (+2.7% relative).
 
-2. **ERC weights on trend_vol_v2** — `erc_vol_managed` on `vol_managed_v2` base underperformed slightly (0.3268 vs 0.3296), but the trend filter changes portfolio composition. With a narrower, more homogeneous universe after filtering, ERC might behave differently. Combine `trend_vol_v2.compute()` with `erc_vol_managed.compute_weights()`. Cheap, ~10 min.
+3. **Soften the trend threshold** — only remaining IS experiment worth running. Currently `trend > 0` (strictly positive 35d return). Try `trend > -0.03` to test whether MDD=11.04% can be reduced without hurting CAGR. Low priority: gain is likely small.
 
-3. **Soften the trend threshold** — currently `trend > 0` (strictly positive 35d return). Try `trend > -0.03` (allow up to −3% drift). In deep bear-market periods many low-vol stocks fail the strict threshold → portfolio narrows → MDD rises. A softer threshold might recover diversification on bad days. Tests the 11.21% MDD penalty.
-
-4. **Nothing else** — the main space (lookback, vol overlay, trend window, N, weighting) is exhausted. Further tuning is overfitting. The remaining OOS risk is structural (bear IS vs unknown OOS regime), not tunable from IS data.
+4. **Nothing else** — IS parameter space is exhausted. Further tuning is overfitting risk. Remaining OOS risk is structural (bear IS vs unknown OOS regime), not tunable from IS data.
 
 ---
 
@@ -141,6 +140,8 @@ Updated 2026-04-20. **Current best:** `trend_vol_v2` (Score=0.3877). IS paramete
 - arXiv:2603.04441 (Wasserstein HMM regime investing) — regime detection for low-vol portfolio, Priority 4
 - SSRN:5130681 (Dissecting Momentum in China) — closes hypothesis #2; confirms reversal-only focus
 - Pacific-Basin Finance Journal (Clustering-Augmented Reversal, Nov 2025) — K-means diversification for low_vol, Priority 3
+
+Updated 2026-04-20. **Current best:** `trend_vol_v3` (Score=0.3981). IS parameter space is exhausted — further gains require structural improvements or OOS regime insight.
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless

@@ -49,6 +49,21 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 
 ---
 
+## Introductory Course
+
+Six-article series for non-finance readers. Covers the full arc from market basics → signal research → execution failure → what actually works → AI-assisted ideation and its limits.
+
+| # | File | Summary |
+|---|------|---------|
+| 1 | [course/01-what-is-the-stock-market](course/01-what-is-the-stock-market.md) | Shares, OHLCV data, order book |
+| 2 | [course/02-the-alpha-hunt](course/02-the-alpha-hunt.md) | What quants do; IC/IR; competition rules |
+| 3 | [course/03-signals-we-built](course/03-signals-we-built.md) | 10+ signals from academic papers |
+| 4 | [course/04-when-smart-strategies-fail](course/04-when-smart-strategies-fail.md) | IR 9.64 → CAGR −54%: the execution gap |
+| 5 | [course/05-what-actually-works](course/05-what-actually-works.md) | Low-vol + trend filter + ERC: Score=0.3981 |
+| 6 | [course/06-on-clean-slates](course/06-on-clean-slates.md) | AI as a research partner; context as constraint |
+
+---
+
 ## Competition Ideas
 
 | File | Contents |
