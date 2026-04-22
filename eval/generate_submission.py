@@ -15,18 +15,21 @@ Usage:
         --n-stocks 20 \\
         --output submissions/TEAMID_sell_open.csv
 
-Strategy: trend_vol_v3 (trend_vol_v2 selection + ERC weights).
-Parameters: trend_window=35, overlay_window=30, sigma_threshold=2.0, base_window=60, excl_illiq=5%, weights=1/σ.
+Strategy: trend_vol_v4 (softened trend threshold=-0.025 + ERC weights).
+Parameters: trend_window=35, trend_threshold=-0.025, overlay_window=30, sigma_threshold=2.0, base_window=60, excl_illiq=5%, weights=1/σ.
 N=20 stocks, sell-at-open.
 
-trend_vol_v3 = trend_vol_v2 stock selection + inverse-volatility (ERC) capital allocation.
-Stock selection: low-vol stocks with positive 35d trend + vol-blanking on stress days.
+trend_vol_v4 = vol_managed_v2 base + trend filter (threshold=-0.025) + inverse-volatility (ERC) allocation.
+Stock selection: low-vol stocks with 35d return > -2.5% + vol-blanking on stress days.
 Allocation: 1/σᵢ per stock (each position contributes equal risk).
+Threshold -0.025 (vs 0.00 in v3) admits flat-to-slightly-down stocks, improving diversification
+on bear-market days and cutting MDD from 11.04% to 7.98%.
 
 In-sample result (D001–D484, N=20, sell-at-open):
-  trend_vol_v3 (tw=35, ERC): CAGR=+12.55%, SR=+1.231, MDD=11.04%, Score=0.3981
-  trend_vol_v2 (tw=35, eq):  CAGR=+12.29%, SR=+1.202, MDD=11.21%, Score=0.3877
-  vol_managed_v2 (prior):    CAGR=+9.64%,  SR=+1.032, MDD=9.38%,  Score=0.3296
+  trend_vol_v4 (thresh=-0.025, ERC): CAGR=+11.75%, SR=+1.207, MDD=7.98%,  Score=0.4024
+  trend_vol_v3 (thresh=0.00,  ERC): CAGR=+12.55%, SR=+1.231, MDD=11.04%, Score=0.3981
+  trend_vol_v2 (thresh=0.00,  eq):  CAGR=+12.29%, SR=+1.202, MDD=11.21%, Score=0.3877
+  vol_managed_v2 (prior):           CAGR=+9.64%,  SR=+1.032, MDD=9.38%,  Score=0.3296
 """
 
 from __future__ import annotations
@@ -39,8 +42,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-# trend_vol_v3: trend_vol_v2 selection + ERC weights — best signal (Score=0.3981)
-from signals import trend_vol_v3 as signal_module
+# trend_vol_v4: threshold=-0.025, ERC weights — best signal (Score=0.4024)
+from signals import trend_vol_v4 as signal_module
 
 
 # ── Core generator ─────────────────────────────────────────────────────────────
@@ -217,7 +220,7 @@ def main() -> None:
     days = sorted(daily["trade_day_id"].unique())
     print(f"  {len(days)} trading days ({days[0]}–{days[-1]}), {daily['asset_id'].nunique()} assets")
 
-    print(f"\nGenerating orders: trend_vol_v3(trend_window=35, ERC weights), N={args.n_stocks}, sell={args.sell_mode}")
+    print(f"\nGenerating orders: trend_vol_v4(trend_window=35, threshold=-0.025, ERC weights), N={args.n_stocks}, sell={args.sell_mode}")
     orders = generate_orders(
         daily,
         sell_mode=args.sell_mode,
