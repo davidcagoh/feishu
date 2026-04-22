@@ -153,14 +153,7 @@ Updated 2026-04-21. Current best: `trend_vol_v4` Score=0.4024. IS parameter spac
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-04-20. **Current best:** `trend_vol_v2` (Score=0.3877). IS parameter space is exhausted — further gains require structural improvements or OOS regime insight.
-
-**Papers added this week (2026-04-17):**
-- arXiv:2603.04441 (Wasserstein HMM regime investing) — regime detection for low-vol portfolio, Priority 4
-- SSRN:5130681 (Dissecting Momentum in China) — closes hypothesis #2; confirms reversal-only focus
-- Pacific-Basin Finance Journal (Clustering-Augmented Reversal, Nov 2025) — K-means diversification for low_vol, Priority 3
-
-Updated 2026-04-20. **Current best:** `trend_vol_v3` (Score=0.3981). IS parameter space is exhausted — further gains require structural improvements or OOS regime insight.
+Updated 2026-04-22. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk.
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless

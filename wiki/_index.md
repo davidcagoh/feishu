@@ -280,12 +280,15 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
 - `signals/portfolio.py` — signal → buy/sell percentage converter
 - `signals/low_vol.py` — minimum volatility signal with liquidity filter
 - `signals/vol_managed.py` — Wang & Li (2024) vol-managed overlay on low_vol
-- `signals/vol_managed_v2.py` — tuned vol_managed (w=30, σ=2.0) — **current best (Score=0.3296)**
+- `signals/vol_managed_v2.py` — tuned vol_managed (w=30, σ=2.0)
+- `signals/trend_vol_v3.py` — threshold=0.00, ERC weights (prior best, Score=0.3981)
+- `signals/trend_vol_v4.py` — threshold=-0.025, ERC weights (current best, Score=0.4024)
+- `signals/counter_trend_low_vol.py` — quiet-pullback variant (failed, Score=-0.1563)
 - `signals/inv_var_vol.py` — 1/σ² allocation on vol_managed selection (no improvement)
 - `signals/cluster_low_vol.py` — K-means cluster-constrained selection (failed)
 - `signals/hmm_regime_vol.py` — HMM soft regime scaling (failed; too conservative)
 - `signals/vol_managed_120d.py` — 120d base window variant (failed; too slow)
-- `eval/generate_submission.py` — outputs competition CSV; now uses vol_managed_v2; ready for OOS run May 28
+- `eval/generate_submission.py` — outputs competition CSV; needs update to use trend_vol_v4 before May 28
 - `wiki/results/strategy_overview.png` — comprehensive dashboard of all signal backtests
 - Repo: https://github.com/davidcagoh/feishu
 - Weekly paper search trigger: `trig_0172Cps6UTTyFq5uSKY3e5UP` (Wednesdays 5pm ET)
@@ -306,8 +309,8 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
 
 **Optional if time permits:**
 - Investigate why the 35d trend window helps: how many stocks are filtered out on an average day? Does it vary by market regime?
-- Test `trend_vol_v2` with ERC weights (`erc_vol_managed` approach) — could improve SR further
-- Consider whether MDD=11.21% is acceptable vs keeping vol_managed_v2 (MDD=9.38%) as backup submission
+- ~~Test trend_vol_v2 with ERC weights~~ — Done (trend_vol_v3, Score=0.3981)
+- ~~Consider MDD=11.21% vs vol_managed_v2~~ — Resolved: trend_vol_v4 achieves MDD=7.98% (Score=0.4024)
 
 ---
 
