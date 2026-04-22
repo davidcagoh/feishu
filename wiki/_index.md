@@ -2,11 +2,11 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-20  
+**Last updated:** 2026-04-21  
 **Papers indexed:** 17  
 **Concepts:** 7  
-**Ideas:** 28 signals catalogued, 22 implemented  
-**Current best:** `trend_vol_v3` Score=0.3981 (CAGR=12.55%, SR=1.231, MDD=11.04%)
+**Ideas:** 28 signals catalogued, 23 implemented  
+**Current best:** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)
 
 ---
 
@@ -167,14 +167,15 @@ Adapt to low_vol: select stocks across clusters
 > backtesting (CAGR ≈ −54%). See "Critical Discovery" section below. Do not build IC-based signals.
 
 
-## Portfolio Backtest Leaderboard (2026-04-20, D001–D484, N=20, sell-at-open)
+## Portfolio Backtest Leaderboard (2026-04-21, D001–D484, N=20, sell-at-open)
 
 > IC metrics are misleading (close-to-close returns ≠ execution IC). Portfolio backtest is ground truth.
 
 | Signal | CAGR | SR | MDD | Score | Notes |
 |--------|------|----|-----|-------|-------|
-| ★ **trend_vol_v3** ← **SUBMISSION** | **12.55%** | **1.231** | **11.04%** | **0.3981** | tw=35, ERC weights, N=20 |
-| trend_vol_v2 | 12.29% | 1.202 | 11.21% | 0.3877 | tw=35, equal weight |
+| ★ **trend_vol_v4** ← **SUBMISSION** | **11.75%** | **1.207** | **7.98%** | **0.4024** | thresh=-0.025, ERC, N=20 |
+| trend_vol_v3 | 12.55% | 1.231 | 11.04% | 0.3981 | thresh=0.00, ERC, N=20 |
+| trend_vol_v2 | 12.29% | 1.202 | 11.21% | 0.3877 | thresh=0.00, equal weight |
 | vol_managed_v2 (prior best) | 9.64% | 1.032 | 9.38% | 0.3296 | w=30, σ=2.0 |
 | trend_filtered_low_vol | 11.07% | 1.097 | 11.21% | 0.3507 | tw=20 |
 | erc_vol_managed | 9.54% | 1.024 | 9.30% | 0.3268 | 1/σ weights, same selection |
@@ -222,24 +223,39 @@ Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
 
 Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D001–D484).
 
-### Winner: Trend-Vol v3 (2026-04-20, ERC weighting)
+### Winner: Trend-Vol v4 (2026-04-21, softened threshold)
 
-`signals/trend_vol_v3.py` — trend_vol_v2 selection (low-vol + 35d trend filter + vol-blanking) with 1/σ ERC allocation weights. N-sweep confirmed N=20 optimal with ERC; equal-weight N=18 also tested (Score=0.3936). Found via N-sweep + ERC experiments after the battery.
+`signals/trend_vol_v4.py` — same ERC weights as trend_vol_v3, but softened trend threshold from `> 0.00` to `> -0.025`. Allows stocks flat-to-slightly-down over 35 days into the eligible set; more candidates on bear-market days → better diversification → much lower MDD.
 
-**Best portfolio configuration (sell-at-open, N=20, D001–D484):**
+**Threshold sweep (ERC weights, N=20, D001–D484):**
+
+| Threshold | CAGR | SR | MDD | Score |
+|-----------|------|----|-----|-------|
+| ★ **-0.025** | **11.75%** | **1.207** | **7.98%** | **0.4024** ← new best |
+| -0.027 | 11.79% | 1.197 | 8.00% | 0.4050 |
+| -0.030 | 11.82% | 1.252 | 7.97% | 0.4079 |
+| **0.000 (trend_vol_v3)** | 12.55% | 1.231 | 11.04% | 0.3981 |
+| -0.040 | 11.71% | 1.236 | 8.18% | 0.4075 |
+
+Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.025 chosen as most conservative improvement that clearly beats trend_vol_v3. The MDD improvement from ~11% to ~8% is robust across the entire -0.020 to -0.040 range — mechanism is clear: more eligible stocks on bear days → better diversification.
+
+**Prior best portfolio configurations (sell-at-open, N=20, D001–D484):**
 
 | Signal | CAGR | SR | MDD | Score |
 |--------|------|----|-----|-------|
-| ★ **trend_vol_v3** (tw=35, ERC, N=20) | **12.55%** | **1.231** | **11.04%** | **0.3981** ← current best |
-| trend_vol_v2 (tw=35, equal, N=20) | 12.29% | 1.202 | 11.21% | 0.3877 |
-| trend_vol_v2 (tw=35, equal, N=18) | 12.25% | 1.214 | 10.30% | 0.3936 |
+| trend_vol_v3 (thresh=0.00, ERC, N=20) | 12.55% | 1.231 | 11.04% | 0.3981 |
+| trend_vol_v2 (thresh=0.00, equal, N=20) | 12.29% | 1.202 | 11.21% | 0.3877 |
+| trend_vol_v2 (thresh=0.00, equal, N=18) | 12.25% | 1.214 | 10.30% | 0.3936 |
 | vol_managed_v2 (prior best) | 9.64% | 1.032 | 9.38% | 0.3296 |
 | low_vol (baseline) | 8.81% | 0.961 | 9.38% | 0.3045 |
 
-- Score improvement: +0.0685 (+20.8% relative) over vol_managed_v2
-- ERC (1/σ) weights add +2.7% relative over equal-weight; shifts capital to quietest names within the filtered universe
-- MDD 11.04% — slight improvement from equal-weight 11.21% due to ERC concentrating in least-volatile stocks
-- IS-peak at tw=37 (Score=0.4310 equal-weight) excluded — noise spike; not validated with ERC
+**Other experiments from 2026-04-21 (failed):**
+- counter_trend_low_vol (pullback -15% to -3%): Score=-0.1563, MDD=21.37% — quiet-pullback stocks keep declining in bear market IS period; execution gap avoided but direction wrong
+- 50/50 blend trend_vol_v3 + counter_trend: Score=0.2475 — counter_trend drags the blend; correlation 0.51 too high for diversification benefit
+
+**Max drawdown anatomy (trend_vol_v3, to correct prior wrong claim):**
+- MDD peak: D265 (54.6% through IS), trough: D367 (75.7% through IS), duration 102 days
+- Warmup window is D000–D035 only; the MDD is a mid-period sustained bear episode, not a warmup artifact
 
 ### Previous best (sell-at-close, N=100, D001–D484):
 - `low_vol`: CAGR=+9.32%, SR=0.850, MDD=13.28% (reported 2026-04-10)
@@ -276,16 +292,17 @@ Market baseline (random selection, N=20): CAGR ≈ −18% (bear market period D0
 
 ## Remaining before June 1
 
-1. Update `eval/generate_submission.py` to use `trend_vol_v2` instead of `vol_managed_v2`
+1. Update `eval/generate_submission.py` to use `trend_vol_v4` (threshold=-0.025, ERC, N=20)
 2. (May 28) Run when OOS data releases:
    ```bash
    python eval/generate_submission.py \
        --daily data/daily_data_oos.parquet \
        --sell-mode open --n-stocks 20 \
-       --output submissions/submission_v3_trend_vol.csv
+       --output submissions/submission_v4_trend_vol.csv
    ```
 3. Verify CSV format matches competition brief §4 exactly
-4. Submit `submissions/submission_v3_trend_vol.csv`
+4. Submit `submissions/submission_v4_trend_vol.csv`
+5. Backup: `trend_vol_v3` (Score=0.3981) if v4 raises any concerns
 
 **Optional if time permits:**
 - Investigate why the 35d trend window helps: how many stocks are filtered out on an average day? Does it vary by market regime?

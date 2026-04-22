@@ -75,6 +75,26 @@ Full battery test of 6 new paradigms: `low_beta` (Score=−0.469), `return_consi
 - Mechanism: avoids limit-down spirals and sector blowups in the IS bear-market period. Low turnover → low cost drag.
 - Vol-managed overlay (Wang & Li 2024) adds +0.0071 Score by skipping rebalance on top-5% variance days.
 
+### trend_vol_v4 is the current best strategy (2026-04-21)
+
+`signals/trend_vol_v4.py` — softened trend threshold (-0.025 instead of 0.00) + ERC weights (1/σ).
+- CAGR=11.75%, SR=1.207, MDD=**7.98%**, Score=**0.4024** — +1.1% over trend_vol_v3.
+- Key improvement: MDD drops from 11.04% → 7.98%. Mechanism is structural: threshold=-0.025 allows stocks that are slightly declining (but not crashing) into the eligible set. On bear-market days when most stocks decline, more candidates → better portfolio diversification → lower peak-to-trough loss.
+- Threshold sweep (-0.020 to -0.040) shows MDD improvement is robust across the range (~7.97-8.44% vs 11.04%), confirming the mechanism, not just a lucky number.
+- -0.030 has the highest IS score (0.4079 ERC) but is a local spike in equal-weight space; -0.025 chosen as most conservative improvement above noise.
+
+### Max drawdown of trend_vol_v3 occurs mid-IS, NOT in warmup window (confirmed 2026-04-21)
+
+Peak at D265 (54.6% through IS), trough at D367 (75.7% through IS). Duration 102 days. The warmup window is D000–D035 (first 36 days). Prior statement that MDD was "structural floor from warmup" was wrong — it's a mid-period sustained bear episode when most stocks decline and the strict trend filter leaves fewer diversification candidates.
+
+### Counter-trend within low-vol fails (2026-04-21)
+
+`signals/counter_trend_low_vol.py` — same low-vol base, selects stocks with 35d return between -15% and -3% (quiet pullback). Score=-0.1563, MDD=21.37%.
+- In a bear IS period, stocks with mild negative 35d trend keep declining; "quiet pullback" is just the early stage of larger declines.
+- Daily return correlation with trend_vol_v3 was 0.51 — too high to be useful for diversification.
+- 50/50 blend gave Score=0.2475.
+- The execution-gap problem is avoided (multi-week signal, not overnight reversal), but the directional thesis is wrong in a bear regime. This could work in a bull OOS period, but we have no IS evidence for it.
+
 ### trend_vol_v3 is the current best strategy (2026-04-20)
 `signals/trend_vol_v3.py` — trend_vol_v2 selection (low-vol + 35d trend filter + vol-blanking) with 1/σ ERC allocation weights.
 - CAGR=12.55%, SR=1.231, MDD=11.04%, Score=**0.3981** — +20.8% over vol_managed_v2.
@@ -121,12 +141,11 @@ Liu et al. (SSRN:5130681, Feb 2025) provides a definitive mechanism: Chinese sto
 
 ## What the Next Experiments Should Prioritise
 
-Updated 2026-04-20. Current best: `trend_vol_v3` Score=0.3981. IS parameter space is exhausted.
+Updated 2026-04-21. Current best: `trend_vol_v4` Score=0.4024. IS parameter space now fully exhausted.
 
 ~~1. N-sweep on trend_vol_v2~~ — **Done.** N=20 confirmed optimal with ERC weighting (trend_vol_v3).
 ~~2. ERC weights on trend_vol_v2~~ — **Done.** trend_vol_v3 = trend_vol_v2 + 1/σ ERC weights. Score 0.3877→0.3981 (+2.7% relative).
-
-3. **Soften the trend threshold** — only remaining IS experiment worth running. Currently `trend > 0` (strictly positive 35d return). Try `trend > -0.03` to test whether MDD=11.04% can be reduced without hurting CAGR. Low priority: gain is likely small.
+~~3. Soften the trend threshold~~ — **Done.** Full sweep -0.07 to +0.03 plus fine sweep around -0.03. Threshold=-0.025 + ERC = trend_vol_v4, Score=0.4024, MDD=7.98%.
 
 4. **Nothing else** — IS parameter space is exhausted. Further tuning is overfitting risk. Remaining OOS risk is structural (bear IS vs unknown OOS regime), not tunable from IS data.
 
