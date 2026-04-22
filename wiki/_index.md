@@ -295,7 +295,7 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
 
 ## Remaining before June 1
 
-1. Update `eval/generate_submission.py` to use `trend_vol_v4` (threshold=-0.025, ERC, N=20)
+1. ~~Update `eval/generate_submission.py` to use `trend_vol_v4`~~ — Done (2026-04-22)
 2. (May 28) Run when OOS data releases:
    ```bash
    python eval/generate_submission.py \
