@@ -573,7 +573,7 @@ N = 35 if bull_regime else 20
 
 **When to use:** If OOS market vol is persistently below IS median → set N=35.  
 **Risk:** In bear episodes within OOS, N=35 may widen MDD. Monitor first 30 OOS days.  
-**Status:** `[ ] untested`
+**Status:** `[x] Implemented as `signals/trend_vol_v5.py` (2026-04-24). N=30 chosen (low end of paper range). IS Score=0.4026 vs v4=0.4024; accepted as OOS contingency.`
 
 ---
 
@@ -594,7 +594,7 @@ params = {'N': 30, 'threshold': 0.0} if regime == 'bull' else {'N': 20, 'thresho
 
 **Expected improvement:** IR of low-vol factor timing 0.05→0.4 from Shu & Mulvey (JPM 2025).  
 **Implementation note:** Full SJM requires `jumpmodels` pip package; proxy above is sufficient for our daily rebalancing frequency.  
-**Status:** `[ ] untested`
+**Status:** `[x] Implemented as `signals/regime.py` + folded into `signals/trend_vol_v5.py` (2026-04-24). SJM proxy uses 22d vol vs 120d-median ratio. Known weakness: low vol ≠ bull (slow-bleed capitulation also low-vol). See learnings §trend_vol_v5.`
 
 ---
 

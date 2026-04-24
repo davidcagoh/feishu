@@ -81,6 +81,14 @@ Soebhag, Baltussen & van Vliet (SSRN:5295002, Jun 2025) show the low-vol premium
 ### Factor-specific regime detection is feasible from price-only signals (confirmed 2026-04-24)
 Shu & Mulvey (arXiv:2410.14841, JPM 2025) demonstrate that a Sparse Jump Model (SJM) applied to factor active-return time series reliably identifies bull/bear regimes for each style factor independently. For the low-vol factor specifically, the SJM confirms underperformance in bull and outperformance in bear — consistent with our IS experience. Feature set is price-only: active return, rolling active vol, market return, market vol. IR improves from 0.05 to ~0.4 via Black-Litterman integration of regime signals. Cross-sectional market volatility is a sufficient proxy for the SJM signal when a full implementation is impractical.
 
+### trend_vol_v5 regime-adaptive wrapper accepted as OOS contingency (2026-04-24)
+
+`signals/trend_vol_v5.py` + `signals/regime.py` — wraps v4 with a price-only bull/neutral/stress detector. On detected bull days, N=30 and trend_threshold=0.00 (from idea #21/#22 paper guidance, not IS sweep). On other days, v4 defaults (N=20, threshold=-0.025).
+- IS Score=0.4026 vs v4=0.4024 (ΔScore=+0.0002). Within the pre-registered ±0.01 acceptance band → accepted.
+- IS label distribution: 46 bull (9.5%), 57 stress (11.8%), 381 neutral (78.7%). Because IS is bear-dominant, the bull branch rarely fires and the IS penalty is minimal.
+- **Known detector weakness:** D458–D481 labeled bull but market declined −13.6%. Low vol ≠ bull; slow-bleed capitulation also has low vol. We did NOT add a return-confirmation guard because that would be IS-fitted. Accepted as structural limitation.
+- OOS decision rule pre-committed: if detector flags ≥30% of OOS window as bull, submit v5; else submit v4.
+
 ### trend_vol_v4 is the current best strategy (2026-04-21)
 
 `signals/trend_vol_v4.py` — softened trend threshold (-0.025 instead of 0.00) + ERC weights (1/σ).

@@ -42,8 +42,14 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-# trend_vol_v4: threshold=-0.025, ERC weights — best signal (Score=0.4024)
-from signals import trend_vol_v4 as signal_module
+# Primary: trend_vol_v4 — threshold=-0.025, ERC weights (IS Score=0.4024).
+# Alternative: trend_vol_v5 — regime-adaptive wrapper for OOS bull-regime insurance
+#             (IS Score=0.4026, ΔScore=+0.0002 vs v4; widens N to 30 and relaxes
+#             trend threshold to 0.00 only on days flagged 'bull' by signals.regime).
+# Selection controlled by --signal flag in main().
+from signals import trend_vol_v4, trend_vol_v5
+
+_SIGNAL_MODULES = {"v4": trend_vol_v4, "v5": trend_vol_v5}
 
 
 # ── Core generator ─────────────────────────────────────────────────────────────
@@ -54,6 +60,7 @@ def generate_orders(
     n_stocks: int = 20,
     vol_window: int = 60,
     excl_illiq: float = 0.05,
+    signal_name: str = "v4",
 ) -> pd.DataFrame:
     """
     Generate buy/sell orders for each (day, asset) based on the vol_managed signal.
@@ -75,6 +82,9 @@ def generate_orders(
     """
     if sell_mode not in ("open", "close"):
         raise ValueError(f"sell_mode must be 'open' or 'close', got {sell_mode!r}")
+    if signal_name not in _SIGNAL_MODULES:
+        raise ValueError(f"signal_name must be one of {list(_SIGNAL_MODULES)}, got {signal_name!r}")
+    signal_module = _SIGNAL_MODULES[signal_name]
 
     signal = signal_module.compute(daily, lob=None, trend_window=35)
     # ERC weights for capital allocation
@@ -199,6 +209,8 @@ def main() -> None:
                         help="Exclude bottom N%% of stocks by 20d avg amount (default: 0.05)")
     parser.add_argument("--output", default=None,
                         help="Output CSV path (default: submissions/submission_<sell_mode>.csv)")
+    parser.add_argument("--signal", choices=["v4", "v5"], default="v4",
+                        help="Signal variant: v4 (primary, Score=0.4024) or v5 (regime-adaptive, Score=0.4026). Default: v4.")
     args = parser.parse_args()
 
     root = Path(__file__).parent.parent
@@ -220,13 +232,15 @@ def main() -> None:
     days = sorted(daily["trade_day_id"].unique())
     print(f"  {len(days)} trading days ({days[0]}–{days[-1]}), {daily['asset_id'].nunique()} assets")
 
-    print(f"\nGenerating orders: trend_vol_v4(trend_window=35, threshold=-0.025, ERC weights), N={args.n_stocks}, sell={args.sell_mode}")
+    n_for_backtest = args.n_stocks if args.signal == "v4" else max(args.n_stocks, trend_vol_v5.BULL_PARAMS.n_stocks)
+    print(f"\nGenerating orders: trend_vol_{args.signal}, N={n_for_backtest} (cap), sell={args.sell_mode}")
     orders = generate_orders(
         daily,
         sell_mode=args.sell_mode,
-        n_stocks=args.n_stocks,
+        n_stocks=n_for_backtest,
         vol_window=args.vol_window,
         excl_illiq=args.excl_illiq,
+        signal_name=args.signal,
     )
 
     print(f"  Generated {len(orders)} rows across {orders['trade_day_id'].nunique()} trading days")
@@ -254,7 +268,7 @@ def main() -> None:
     else:
         out_dir = root / "submissions"
         out_dir.mkdir(exist_ok=True)
-        out_path = out_dir / f"submission_N{args.n_stocks}_sell_{args.sell_mode}.csv"
+        out_path = out_dir / f"submission_{args.signal}_N{args.n_stocks}_sell_{args.sell_mode}.csv"
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     orders.to_csv(out_path, index=False)

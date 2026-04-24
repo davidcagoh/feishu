@@ -5,8 +5,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 **Last updated:** 2026-04-24  
 **Papers indexed:** 20  
 **Concepts:** 7  
-**Ideas:** 28 signals catalogued, 23 implemented  
-**Current best:** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)
+**Ideas:** 31 signals catalogued, 24 implemented  
+**Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
+**OOS contingency:** `trend_vol_v5` Score=0.4026 — regime-adaptive overlay (N=30, threshold=0.00 on detected bull days; otherwise v4 defaults). Staged as alternative submission.
 
 ---
 
@@ -176,7 +177,8 @@ Adapt to low_vol: select stocks across clusters
 
 | Signal | CAGR | SR | MDD | Score | Notes |
 |--------|------|----|-----|-------|-------|
-| ★ **trend_vol_v4** ← **SUBMISSION** | **11.75%** | **1.207** | **7.98%** | **0.4024** | thresh=-0.025, ERC, N=20 |
+| ★ **trend_vol_v4** ← **SUBMISSION (primary)** | **11.75%** | **1.207** | **7.98%** | **0.4024** | thresh=-0.025, ERC, N=20 |
+| ☆ **trend_vol_v5** ← OOS contingency | 11.83% | 1.232 | 8.15% | 0.4026 | v4 defaults + regime overlay (N=30, thresh=0.00 on bull days) |
 | trend_vol_v3 | 12.55% | 1.231 | 11.04% | 0.3981 | thresh=0.00, ERC, N=20 |
 | trend_vol_v2 | 12.29% | 1.202 | 11.21% | 0.3877 | thresh=0.00, equal weight |
 | vol_managed_v2 (prior best) | 9.64% | 1.032 | 9.38% | 0.3296 | w=30, σ=2.0 |
@@ -291,7 +293,11 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
 - `signals/cluster_low_vol.py` — K-means cluster-constrained selection (failed)
 - `signals/hmm_regime_vol.py` — HMM soft regime scaling (failed; too conservative)
 - `signals/vol_managed_120d.py` — 120d base window variant (failed; too slow)
-- `eval/generate_submission.py` — outputs competition CSV; needs update to use trend_vol_v4 before May 28
+- `signals/regime.py` — price-only bull/neutral/stress detector (VOL_WINDOW=22, MEDIAN_WINDOW=120, BULL_RATIO=0.75, STRESS_RATIO=1.50; no IS fitting)
+- `signals/trend_vol_v5.py` — regime-adaptive wrapper around v4 (N=30, threshold=0.00 on bull days; otherwise v4 defaults)
+- `scripts/regime_sanity_check.py` — classifier validation on IS (46 bull days, 57 stress days, 381 neutral)
+- `scripts/compare_v4_v5.py` — IS backtest comparison (ΔScore=+0.0002, accepted)
+- `eval/generate_submission.py` — supports `--signal v4|v5`; default v4 (primary)
 - `wiki/results/strategy_overview.png` — comprehensive dashboard of all signal backtests
 - Repo: https://github.com/davidcagoh/feishu
 - Weekly paper search trigger: `trig_0172Cps6UTTyFq5uSKY3e5UP` (Wednesdays 5pm ET)
@@ -299,16 +305,26 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
 ## Remaining before June 1
 
 1. ~~Update `eval/generate_submission.py` to use `trend_vol_v4`~~ — Done (2026-04-22)
-2. (May 28) Run when OOS data releases:
+2. ~~Build OOS bull-regime contingency (`trend_vol_v5`)~~ — Done (2026-04-24)
+3. (May 28) Run BOTH variants when OOS data releases:
    ```bash
-   python eval/generate_submission.py \
-       --daily data/daily_data_oos.parquet \
-       --sell-mode open --n-stocks 20 \
+   python eval/generate_submission.py --daily data/daily_data_oos.parquet \
+       --sell-mode open --n-stocks 20 --signal v4 \
        --output submissions/submission_v4_trend_vol.csv
+   python eval/generate_submission.py --daily data/daily_data_oos.parquet \
+       --sell-mode open --n-stocks 20 --signal v5 \
+       --output submissions/submission_v5_adaptive.csv
    ```
-3. Verify CSV format matches competition brief §4 exactly
-4. Submit `submissions/submission_v4_trend_vol.csv`
-5. Backup: `trend_vol_v3` (Score=0.3981) if v4 raises any concerns
+4. Check regime at end of OOS window:
+   ```bash
+   python -c "import pandas as pd; from signals.regime import regime_labels; \
+       daily = pd.read_parquet('data/daily_data_oos.parquet'); \
+       print(regime_labels(daily).value_counts())"
+   ```
+   - If bull days ≥ 30% of OOS window → submit v5 (`submission_v5_adaptive.csv`)
+   - Else → submit v4 (`submission_v4_trend_vol.csv`) — primary
+5. Verify CSV format matches competition brief §4 exactly
+6. Backup: `trend_vol_v3` (Score=0.3981) if both v4 and v5 raise concerns
 
 **Optional if time permits:**
 - Investigate why the 35d trend window helps: how many stocks are filtered out on an average day? Does it vary by market regime?
