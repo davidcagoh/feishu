@@ -552,6 +552,74 @@ def cluster_constrained_selection(daily, trade_day, N=20, n_clusters=10, lookbac
 
 ---
 
+---
+
+## OOS Contingency Ideas (from April 2026 papers — session 5)
+
+> IS parameter space is exhausted. These ideas cannot improve the IS Score and should NOT be tested on IS data. They are contingency plans to deploy when OOS data arrives May 28 if the OOS regime appears to be a bull market.
+
+### 21. Dynamic N Expansion in Bull Regime
+**Source:** [[factoring-low-volatility-factor-2025]]  
+**Idea:** When market volatility is well below its long-run median (bull regime proxy), expand N from 20 to 30–35 to restore beta exposure and reduce low-vol underperformance drag.
+
+```python
+# In trend_vol_v4.py — compute before stock selection:
+market_vol_22d = market_ret.rolling(22).std() * np.sqrt(252)
+long_run_median_vol = market_vol_22d.rolling(120).median()
+
+bull_regime = market_vol_22d.iloc[-1] < 0.75 * long_run_median_vol.iloc[-1]
+N = 35 if bull_regime else 20
+```
+
+**When to use:** If OOS market vol is persistently below IS median → set N=35.  
+**Risk:** In bear episodes within OOS, N=35 may widen MDD. Monitor first 30 OOS days.  
+**Status:** `[ ] untested`
+
+---
+
+### 22. Sparse Jump Model Regime Overlay
+**Source:** [[dynamic-factor-allocation-regime-sjm-2025]]  
+**Idea:** Detect low-vol factor regime from cross-sectional market return history. In bull regime (market vol < long-run median), relax trend threshold and expand N. In bear, maintain trend_vol_v4 defaults.
+
+```python
+def detect_regime(market_ret, window=60):
+    """Returns 'bull' or 'bear' using cross-sectional vol as SJM proxy."""
+    vol_22d = market_ret.rolling(22).std().iloc[-1] * np.sqrt(252)
+    vol_median = market_ret.rolling(22).std().rolling(120).median().iloc[-1] * np.sqrt(252)
+    return 'bull' if vol_22d < vol_median else 'bear'
+
+regime = detect_regime(market_ret)
+params = {'N': 30, 'threshold': 0.0} if regime == 'bull' else {'N': 20, 'threshold': -0.025}
+```
+
+**Expected improvement:** IR of low-vol factor timing 0.05→0.4 from Shu & Mulvey (JPM 2025).  
+**Implementation note:** Full SJM requires `jumpmodels` pip package; proxy above is sufficient for our daily rebalancing frequency.  
+**Status:** `[ ] untested`
+
+---
+
+### 23. Adaptive Volatility Window (FIGARCH-Inspired)
+**Source:** [[adaptive-minimum-variance-arfima-figarch-2025]]  
+**Idea:** Replace fixed 60d rolling vol window with a regime-adaptive window: 20d in high-vol regimes (faster adaptation), 90d in calm regimes (more stable rankings).
+
+```python
+def adaptive_window(market_ret, base=60, short=20, long=90):
+    vol_22d = market_ret.rolling(22).std().iloc[-1]
+    vol_median = market_ret.rolling(22).std().rolling(120).median().iloc[-1]
+    ratio = vol_22d / (vol_median + 1e-8)
+    if ratio > 1.5:
+        return short   # high-vol: shorten for faster response
+    elif ratio < 0.75:
+        return long    # low-vol/bull: lengthen for stability
+    return base        # normal: use base
+```
+
+**Expected improvement:** Faster exclusion of deteriorating stocks at onset of bear episodes; more stable rankings in bull markets. Targets MDD reduction (Priority 2).  
+**Risk:** More complex; adaptive window adds parameter sensitivity. Low risk: only 2 thresholds (1.5× and 0.75×) tied to long-run median, not IS-fitted.  
+**Status:** `[ ] untested`
+
+---
+
 ## Priority Order for Implementation
 
 > Updated 2026-04-20. IC-era signals (1–12) are all complete and ruled out — IC does not predict portfolio alpha due to execution gap. Portfolio backtest is the only valid evaluation metric. Current best: `trend_vol_v2` Score=0.3877.

@@ -75,6 +75,12 @@ Full battery test of 6 new paradigms: `low_beta` (Score=−0.469), `return_consi
 - Mechanism: avoids limit-down spirals and sector blowups in the IS bear-market period. Low turnover → low cost drag.
 - Vol-managed overlay (Wang & Li 2024) adds +0.0071 Score by skipping rebalance on top-5% variance days.
 
+### Long-only low-vol implementation is structurally correct (confirmed 2026-04-24)
+Soebhag, Baltussen & van Vliet (SSRN:5295002, Jun 2025) show the low-vol premium splits asymmetrically: the long leg (buying low-vol stocks, market-beta-hedged) generates genuine alpha that survives transaction costs; the short leg does not. Our long-only constraint means we implicitly implement only the alpha-generating leg. The bull-market lag is real — low-vol underperforms the market index in bull runs — but the long leg does not generate absolute losses. **Practical implication:** expand N in detected bull regimes to restore beta exposure rather than abandoning the strategy.
+
+### Factor-specific regime detection is feasible from price-only signals (confirmed 2026-04-24)
+Shu & Mulvey (arXiv:2410.14841, JPM 2025) demonstrate that a Sparse Jump Model (SJM) applied to factor active-return time series reliably identifies bull/bear regimes for each style factor independently. For the low-vol factor specifically, the SJM confirms underperformance in bull and outperformance in bear — consistent with our IS experience. Feature set is price-only: active return, rolling active vol, market return, market vol. IR improves from 0.05 to ~0.4 via Black-Litterman integration of regime signals. Cross-sectional market volatility is a sufficient proxy for the SJM signal when a full implementation is impractical.
+
 ### trend_vol_v4 is the current best strategy (2026-04-21)
 
 `signals/trend_vol_v4.py` — softened trend threshold (-0.025 instead of 0.00) + ERC weights (1/σ).
@@ -153,36 +159,34 @@ Updated 2026-04-21. Current best: `trend_vol_v4` Score=0.4024. IS parameter spac
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-04-22. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk.
+Updated 2026-04-24. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk.
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless
 - Statistical arbitrage, mean-reversion signal construction
 - PCA residuals, Kalman filters on LOB data — same problem
+- Low-vol factor long/short theory — covered by Soebhag et al. (Jun 2025); long-only validation complete
+- Generic SJM / regime-switching factor allocation — covered by Shu & Mulvey (JPM 2025)
 
-**Priority 1 — Bull-market resilience (HIGHEST IMPACT)**
-Our biggest OOS risk: D485–D726 could be a bull market where low-vol dramatically underperforms. Search for:
-- Low-volatility anomaly behaviour in bull vs bear markets (Chinese A-shares specifically)
-- Adaptive minimum-variance portfolios that incorporate regime signals
-- Methods for blending defensive and growth exposure based on market-wide signals
-- Papers on low-vol strategy OOS degradation and how to mitigate it
+**Priority 1 — Bull-market resilience (PARTIALLY ADDRESSED)**
+Soebhag et al. (2025) confirm the long leg is robust. Shu & Mulvey (2025) provide the SJM regime detector. What remains:
+- **Chinese A-share specific**: How does the low-vol long leg perform in a Chinese bull market? The existing evidence (Blitz et al. 2021, Wang & Li 2024) covers general performance, not bull-specific. Search for recent Chinese A-share low-vol bull-period evidence.
+- **Dynamic N implementation**: Is there evidence that expanding N in bull periods actually helps more than it hurts in bear periods? Search for adaptive-N or variable-breadth minimum-variance portfolios.
 
-**Fixed income analogy (Lec 02):** Our low_vol portfolio = "long duration" in equity terms. v₁ (parallel shift) in bonds = market beta in equity; both strategies earn a risk premium by being exposed to this factor. Duration management in fixed income (dynamic hedging of v₁ exposure) is the direct analogue of what we need: regime-conditional beta management. Key constraint: full hedging requires shorts (unavailable). Partial fix: in detected bull regime, expand N or relax volatility screen to include slightly higher-beta stocks. See [[factor-models]] for full analogy and Orange County warning (hedging one factor while concentrating in another).
+**Priority 2 — MDD reduction in long-only portfolios (PARTIALLY ADDRESSED)**
+Jha et al. (2025) introduce adaptive covariance windows via ARFIMA-FIGARCH. What remains:
+- Evidence on regime-aware position sizing specifically in Chinese equity bear episodes
+- Stop-loss or drawdown-triggered rebalancing in long-only portfolios
+- Whether dynamic vol windows (short in high-vol, long in calm) actually reduce MDD vs. fixed 60d (untested on Feishu IS)
 
-**Priority 2 — MDD reduction in long-only portfolios**
-MDD=11.21% with trend_vol_v2 (rose from 9.38% when trend filter narrows universe on down days). Search for:
-- Drawdown control in long-only equity portfolios (position sizing, stop-loss overlays, tail-risk hedging)
-- Portfolio insurance for long-only constraint (no leverage, no shorts)
-- Maximum drawdown minimisation as a portfolio objective (not just variance)
+**Priority 3 — Stock selection within the low-vol universe (OPEN)**
+Quality + low-vol combination for Chinese A-shares not yet addressed. Search for:
+- Quality factors (earnings stability, profitability) combined with low-vol in China A-shares
+- Sector-neutral minimum variance — does forcing sector balance reduce concentration risk?
+- Recent evidence (2025–2026) on what characteristics improve within a low-vol screen
 
-**Priority 3 — Stock selection within the low-vol universe**
-Are there characteristics that improve returns *within* a minimum-volatility stock screen? Search for:
-- Quality factors (profitability, earnings stability) combined with low-volatility in Chinese equities
-- Sector-neutral minimum variance construction — does forcing sector balance improve OOS Sharpe?
-- Liquidity-adjusted low-vol: are there better illiquidity screens than 20d avg amount?
-
-**Priority 4 — Regime detection without price data**
-Can we detect whether OOS period is bull or bear *before* it happens, using macro signals available in the competition data? Search for:
-- Market state classification from cross-sectional return dispersion or vol level
-- Regime-switching overlays on low-vol strategies (not HMM on IC — HMM on portfolio-level signals)
-- Breadth indicators (% of stocks above moving average) as regime proxies
+**Priority 4 — OOS regime confirmation (NEW — HIGHEST URGENCY)**
+With submission deadline June 1 (OOS data released May 28), we need to know what regime D485+ is likely in:
+- Chinese A-share market regime classification for 2025–2026: is it bull, bear, or mixed?
+- Whether the "slow bull" started in mid-2025 is expected to continue (D485 ≈ late 2025 based on 484-day IS period)
+- Papers on detecting regime transitions from price-only data with short-lag signals (daily rebalancing)

@@ -2,8 +2,8 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-21  
-**Papers indexed:** 17  
+**Last updated:** 2026-04-24  
+**Papers indexed:** 20  
 **Concepts:** 7  
 **Ideas:** 28 signals catalogued, 23 implemented  
 **Current best:** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)
@@ -31,6 +31,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [explainable-regime-aware-investing-2026](papers/explainable-regime-aware-investing-2026.md) | Explainable Regime Aware Investing (Boukardagha, Feb/Mar 2026) | Wasserstein HMM + transaction-cost-aware MV optimization; Sharpe 2.18 vs 1.59 equal-weight; MDD −5.43% vs −14.62% SPX | High — soft HMM regime overlay replaces binary vol threshold in vol_managed; directly addresses hypothesis #6 |
 | [dissecting-momentum-china-2025](papers/dissecting-momentum-china-2025.md) | Dissecting Momentum in China (Liu, Tan, Xu, Yuan, Zhu, Feb 2025) | Momentum absent in China: news-day gains reversed on non-news days (retail tug-of-war); explains absence at all horizons 3–12m | High — definitively closes hypothesis #2 (intermediate momentum); confirms our focus on reversal/low-vol is correct |
 | [clustering-augmented-reversal-china-2025](papers/clustering-augmented-reversal-china-2025.md) | Clustering-Augmented Reversal Strategy: Chinese Stock Market (Jiao & Zheng, Nov 2025) | K-means clustering before reversal portfolios yields 2.28–2.50%/month alpha; clustering contributes 20–45% of returns; no risk-factor loadings | High — K-means cluster-constrained low-vol selection fixes sector concentration problem; could reduce MDD on OOS |
+| [factoring-low-volatility-factor-2025](papers/factoring-low-volatility-factor-2025.md) | Factoring in the Low-Volatility Factor (Soebhag, Baltussen, van Vliet, Jun 2025) | Long leg of low-vol generates genuine alpha (survives costs); short leg does not — asymmetry explains why factor is missing from standard models; Sharpe improves 13–17% | High — validates our long-only approach as the correct implementation; bull-market lag is real but manageable via N expansion |
+| [dynamic-factor-allocation-regime-sjm-2025](papers/dynamic-factor-allocation-regime-sjm-2025.md) | Dynamic Factor Allocation Leveraging Regime-Switching Signals (Shu & Mulvey, JPM 2025) | Sparse Jump Model detects factor-specific bull/bear regimes; IR 0.05→0.4 for long-only multi-factor portfolio; low-vol explicitly one of 7 factors | High — direct blueprint for adaptive N expansion in OOS bull regime; addresses Priority 4 (regime detection) and Priority 1 |
+| [adaptive-minimum-variance-arfima-figarch-2025](papers/adaptive-minimum-variance-arfima-figarch-2025.md) | Adaptive Minimum-Variance Portfolios via ARFIMA-FIGARCH (Jha, Shirvani, Rachev, Fabozzi, Jan 2025) | FIGARCH adaptive covariance reduces drawdowns during regime transitions vs. fixed rolling window; tested on equity and crypto | Medium — adaptive vol window (short in high-vol, long in calm) as drop-in improvement to low_vol.py; addresses Priority 2 (MDD reduction) |
 
 ---
 
