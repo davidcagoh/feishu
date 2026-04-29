@@ -167,7 +167,7 @@ Updated 2026-04-21. Current best: `trend_vol_v4` Score=0.4024. IS parameter spac
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-04-24. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk.
+Updated 2026-04-29. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk and OOS strategy robustness.
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless
@@ -175,11 +175,13 @@ Updated 2026-04-24. **Current best:** `trend_vol_v4` (Score=0.4024). IS paramete
 - PCA residuals, Kalman filters on LOB data — same problem
 - Low-vol factor long/short theory — covered by Soebhag et al. (Jun 2025); long-only validation complete
 - Generic SJM / regime-switching factor allocation — covered by Shu & Mulvey (JPM 2025)
+- Long-only minimum variance theory / active set characterisation — covered by Kercheval & Sowunmi (Apr 2026)
+- OOS regime confirmation (Chinese A-share 2025–2026) — sufficiently addressed; two price-only detectors now available
 
-**Priority 1 — Bull-market resilience (PARTIALLY ADDRESSED)**
-Soebhag et al. (2025) confirm the long leg is robust. Shu & Mulvey (2025) provide the SJM regime detector. What remains:
-- **Chinese A-share specific**: How does the low-vol long leg perform in a Chinese bull market? The existing evidence (Blitz et al. 2021, Wang & Li 2024) covers general performance, not bull-specific. Search for recent Chinese A-share low-vol bull-period evidence.
-- **Dynamic N implementation**: Is there evidence that expanding N in bull periods actually helps more than it hurts in bear periods? Search for adaptive-N or variable-breadth minimum-variance portfolios.
+**Priority 1 — Bull-market resilience (FURTHER ADDRESSED)**
+Soebhag et al. (2025) confirm the long leg is robust. Shu & Mulvey (2025) provide the SJM regime detector. Kercheval & Sowunmi (Apr 2026, arXiv:2604.09986) now provide the **formal theoretical proof**: when market betas are all positive (bull environment), the unconstrained LOMV active ratio → 0 (extreme concentration). This formally justifies our N=30 expansion in v5 — without the minimum-N constraint, the portfolio would shrink to ≈ 5 stocks in a bull regime.
+- **Remaining open**: Chinese-specific empirical evidence on low-vol bull performance (factor reviews confirm low-vol underperformed in Q1–Q2 2025 Chinese bull, consistent with theory)
+- **New beta-std proxy**: Cross-sectional beta variance is a theoretically grounded alternative to vol-ratio for bull detection. Compute 60d rolling betas → cross-sectional std → low std = bull (betas converging). Run on IS data D420–D484 to get independent regime confirmation before May 28.
 
 **Priority 2 — MDD reduction in long-only portfolios (PARTIALLY ADDRESSED)**
 Jha et al. (2025) introduce adaptive covariance windows via ARFIMA-FIGARCH. What remains:
@@ -187,14 +189,21 @@ Jha et al. (2025) introduce adaptive covariance windows via ARFIMA-FIGARCH. What
 - Stop-loss or drawdown-triggered rebalancing in long-only portfolios
 - Whether dynamic vol windows (short in high-vol, long in calm) actually reduce MDD vs. fixed 60d (untested on Feishu IS)
 
-**Priority 3 — Stock selection within the low-vol universe (OPEN)**
-Quality + low-vol combination for Chinese A-shares not yet addressed. Search for:
-- Quality factors (earnings stability, profitability) combined with low-vol in China A-shares
-- Sector-neutral minimum variance — does forcing sector balance reduce concentration risk?
-- Recent evidence (2025–2026) on what characteristics improve within a low-vol screen
+**Priority 3 — Stock selection within the low-vol universe (PARTIALLY ADDRESSED)**
+Li & Li (Finance Research Letters, 2025) identify the **MAX filter** as an orthogonal secondary screen for Chinese A-shares: the MAX effect (maximum single-day return in past month) is independent of IV in China. High-MAX stocks are lottery tickets that revert to high IV quickly. Adding a MAX filter (exclude top 25% by max_ret_20d) to the eligible pool after vol-sorting removes post-spike stocks not caught by 60d rolling vol.
+- Implementable idea: Signal #24 (see ideas file)
+- Caveat: OOS-only test — IS parameter space exhausted
+- Still open: quality factors (profitability, earnings stability) — not testable with price/volume-only data; sector-neutral minimum variance — no sector labels in Feishu dataset
 
-**Priority 4 — OOS regime confirmation (NEW — HIGHEST URGENCY)**
-With submission deadline June 1 (OOS data released May 28), we need to know what regime D485+ is likely in:
-- Chinese A-share market regime classification for 2025–2026: is it bull, bear, or mixed?
-- Whether the "slow bull" started in mid-2025 is expected to continue (D485 ≈ late 2025 based on 484-day IS period)
-- Papers on detecting regime transitions from price-only data with short-lag signals (daily rebalancing)
+**Priority 4 — OOS regime confirmation (PARTIALLY ADDRESSED)**
+Two new sources provide OOS regime intelligence:
+
+**Market commentary (analyst consensus, Jan 2026):** Chinese A-share market in H1 2025 was a "slow bull" — CSI 300 +0.03%, CSI 500 +3.31%, CSI 1000 +6.69%. Low-vol and value underperformed Q1–Q2 2025 while growth and small-cap outperformed. Bank of China, Invesco, and Chinadaily consensus: "slow bull" expected to continue into 2026. This means D485+ (≈ H1 2025 onward) is most likely a bull/slow-bull regime → v5 (N=30) is the better OOS submission.
+
+**Pang & Lin (Frontiers in Physics, Aug 2025):** 5-state correlation-based regime classifier for Chinese stocks. Apply their rolling-correlation → MDS → K-means pipeline to our IS data to identify which state D484 is in. If D484 maps to a low-correlation (idiosyncratic) state, that's independent price-only confirmation of the slow-bull regime. Code in wiki/papers/market-state-transitions-crash-warning-china-2025.md.
+
+**Pre-submission action (May 28):** Run both regime checks:
+1. regime.py vol-ratio: if ≥30% of OOS days flagged bull → favour v5
+2. 5-state correlation classifier on D420–D484 end state: if low-correlation state → corroborates bull
+
+**Remaining search priority:** No longer searching for academic papers on this topic — market commentary + two price-only detectors are sufficient for the decision. Remove from next search priorities.

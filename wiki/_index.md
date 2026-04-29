@@ -2,8 +2,8 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-24  
-**Papers indexed:** 20  
+**Last updated:** 2026-04-29  
+**Papers indexed:** 23  
 **Concepts:** 7  
 **Ideas:** 31 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
@@ -35,6 +35,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [factoring-low-volatility-factor-2025](papers/factoring-low-volatility-factor-2025.md) | Factoring in the Low-Volatility Factor (Soebhag, Baltussen, van Vliet, Jun 2025) | Long leg of low-vol generates genuine alpha (survives costs); short leg does not — asymmetry explains why factor is missing from standard models; Sharpe improves 13–17% | High — validates our long-only approach as the correct implementation; bull-market lag is real but manageable via N expansion |
 | [dynamic-factor-allocation-regime-sjm-2025](papers/dynamic-factor-allocation-regime-sjm-2025.md) | Dynamic Factor Allocation Leveraging Regime-Switching Signals (Shu & Mulvey, JPM 2025) | Sparse Jump Model detects factor-specific bull/bear regimes; IR 0.05→0.4 for long-only multi-factor portfolio; low-vol explicitly one of 7 factors | High — direct blueprint for adaptive N expansion in OOS bull regime; addresses Priority 4 (regime detection) and Priority 1 |
 | [adaptive-minimum-variance-arfima-figarch-2025](papers/adaptive-minimum-variance-arfima-figarch-2025.md) | Adaptive Minimum-Variance Portfolios via ARFIMA-FIGARCH (Jha, Shirvani, Rachev, Fabozzi, Jan 2025) | FIGARCH adaptive covariance reduces drawdowns during regime transitions vs. fixed rolling window; tested on equity and crypto | Medium — adaptive vol window (short in high-vol, long in calm) as drop-in improvement to low_vol.py; addresses Priority 2 (MDD reduction) |
+| [long-only-minimum-variance-one-factor-2026](papers/long-only-minimum-variance-one-factor-2026.md) | The Long-Only Minimum Variance Portfolio in a One-Factor Market: Theory and Asymptotics (Kercheval & Sowunmi, Apr 2026) | Active ratio → F(β*) in high dimensions; bull markets (all-positive betas) cause extreme concentration; explicit active-set characterisation | High — formally justifies v5 N=30 expansion in bull regimes; provides beta-std proxy as independent regime detector; Priority 1 |
+| [low-risk-anomaly-iv-distribution-china-2025](papers/low-risk-anomaly-iv-distribution-china-2025.md) | Low-risk anomaly: Idiosyncratic risk or return distribution (Li & Li, Finance Research Letters 2025) | IV beats past-return sorting in China; MAX effect orthogonal to IV (unlike US); MAX pricing concentrated in low-sentiment periods | High — MAX filter as orthogonal secondary screen within low-vol universe for Chinese A-shares; addresses Priority 3 |
+| [market-state-transitions-crash-warning-china-2025](papers/market-state-transitions-crash-warning-china-2025.md) | Market State Transitions and Crash Early Warning in the Chinese Stock Market (Pang & Lin, Frontiers in Physics 2025) | 5-state K-means classifier on rolling correlation matrix; state-transition temporal features → decision tree crash early warning; high precision/recall | High — price-only Chinese 5-state regime classifier orthogonal to vol-ratio detector; directly informs v4 vs v5 submission decision; Priority 4 |
 
 ---
 

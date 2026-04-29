@@ -554,6 +554,35 @@ def cluster_constrained_selection(daily, trade_day, N=20, n_clusters=10, lookbac
 
 ---
 
+## Tier 2 Additions (from new papers, April 2026 — session 6)
+
+### 24. MAX Filter within Low-Vol Universe
+**Source:** [[low-risk-anomaly-iv-distribution-china-2025]]  
+**Idea:** After computing the low-vol eligible pool (60d rolling vol + trend filter), add a secondary screen that excludes stocks in the top quartile of MAX (maximum single-day return over the past 20 trading days). MAX and IV are orthogonal in Chinese A-shares: stocks with recent extreme single-day spikes have temporarily suppressed rolling-vol rankings but are lottery tickets that revert to high IV quickly.
+
+```python
+# Compute per-asset MAX over trailing 20 trading days
+daily['max_ret_20d'] = daily.groupby('asset_id')['ret'].transform(
+    lambda x: x.rolling(20).max()
+)
+
+# In selection logic, after trend filter, before final N=20 pick:
+def apply_max_filter(eligible_df, quantile=0.75):
+    """Remove stocks in top quartile by recent max daily return."""
+    threshold = eligible_df['max_ret_20d'].quantile(quantile)
+    filtered = eligible_df[eligible_df['max_ret_20d'] <= threshold]
+    # Safeguard: if filter removes too many candidates, relax threshold
+    if len(filtered) < 25:  # need at least 25 to pick N=20 from
+        return eligible_df
+    return filtered
+```
+
+**Expected benefit:** Removes post-spike stocks whose 60d vol is temporarily suppressed. Paper confirms these stocks revert to high IV (0.46% vs 0.29%), creating MDD risk. Targets MDD reduction (our binding constraint at 7.98%).  
+**Risk:** On bear-market days with few eligible stocks, the filter may reduce the pool below N=20 → safeguard needed.  
+**Status:** `[ ] untested`
+
+---
+
 ## OOS Contingency Ideas (from April 2026 papers — session 5)
 
 > IS parameter space is exhausted. These ideas cannot improve the IS Score and should NOT be tested on IS data. They are contingency plans to deploy when OOS data arrives May 28 if the OOS regime appears to be a bull market.
