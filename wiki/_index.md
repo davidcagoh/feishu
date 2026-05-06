@@ -2,8 +2,8 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-04-29  
-**Papers indexed:** 23  
+**Last updated:** 2026-05-06  
+**Papers indexed:** 26  
 **Concepts:** 7  
 **Ideas:** 31 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
@@ -38,6 +38,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [long-only-minimum-variance-one-factor-2026](papers/long-only-minimum-variance-one-factor-2026.md) | The Long-Only Minimum Variance Portfolio in a One-Factor Market: Theory and Asymptotics (Kercheval & Sowunmi, Apr 2026) | Active ratio → F(β*) in high dimensions; bull markets (all-positive betas) cause extreme concentration; explicit active-set characterisation | High — formally justifies v5 N=30 expansion in bull regimes; provides beta-std proxy as independent regime detector; Priority 1 |
 | [low-risk-anomaly-iv-distribution-china-2025](papers/low-risk-anomaly-iv-distribution-china-2025.md) | Low-risk anomaly: Idiosyncratic risk or return distribution (Li & Li, Finance Research Letters 2025) | IV beats past-return sorting in China; MAX effect orthogonal to IV (unlike US); MAX pricing concentrated in low-sentiment periods | High — MAX filter as orthogonal secondary screen within low-vol universe for Chinese A-shares; addresses Priority 3 |
 | [market-state-transitions-crash-warning-china-2025](papers/market-state-transitions-crash-warning-china-2025.md) | Market State Transitions and Crash Early Warning in the Chinese Stock Market (Pang & Lin, Frontiers in Physics 2025) | 5-state K-means classifier on rolling correlation matrix; state-transition temporal features → decision tree crash early warning; high precision/recall | High — price-only Chinese 5-state regime classifier orthogonal to vol-ratio detector; directly informs v4 vs v5 submission decision; Priority 4 |
+| [metric-dependence-asset-selection-china-2026](papers/metric-dependence-asset-selection-china-2026.md) | Large-Scale Asset Selection via Metric Dependence with Enriched High Frequency Information (Chen, He, Chen, May 2026) | Fréchet variation MDS screening of 2,938 Chinese A-share stocks (Jul 2023–Dec 2025); two-stage MDS → min-variance beats return-based and scalar dependence benchmarks | High — LOB intraday risk curve as orthogonal stock selection screen; Priority 3 |
+| [sparse-minimum-variance-gradient-2025](papers/sparse-minimum-variance-gradient-2025.md) | A Scalable Gradient-Based Optimization Framework for Sparse Minimum-Variance Portfolio Selection (Moka, Quiroz, Asimit, Muller, May 2025) | Boolean relaxation converts cardinality-constrained MVP (MIQP) to continuous gradient problem; matches commercial solvers in >95% of instances at polynomial cost | Medium — replaces top-N rolling-vol ranking with joint sparse MVP; better diversification → lower portfolio variance; Priority 3 |
+| [robust-minimum-variance-hedging-2026](papers/robust-minimum-variance-hedging-2026.md) | Hedging Market Risk and Uncertainty via a Robust Portfolio Approach (Ravagnani et al., April 2026) | Box-uncertainty robust hedge ratio shrinks rebalancing magnitude when vol forecast is uncertain; lower turnover + improved downside protection on equity/bond/commodity ETFs 2016–2024 | Medium — robust rebalancing step (continuous shrinkage vs binary skip) addresses MDD reduction; Priority 2 |
 
 ---
 

@@ -649,6 +649,129 @@ def adaptive_window(market_ret, base=60, short=20, long=90):
 
 ---
 
+---
+
+## Tier 1 Additions (from new papers, May 2026 — session 7)
+
+> IS parameter space exhausted. These are OOS-only ideas. Do not test on IS data.
+
+### 25. MDS Intraday Risk Screen
+**Source:** [[metric-dependence-asset-selection-china-2026]]  
+**Idea:** Before final N=20 selection in `trend_vol_v4`, add a secondary screen using intraday vol (from LOB snapshots). Stocks with intraday volatility above the cross-sectional median are excluded — they appear low-vol in daily data but have elevated realised intraday risk (potential early warning of limit-down events). Adapted from Metric Dependence Screening on Chinese A-shares (2,938 stocks, 2023–2025).
+
+```python
+# Compute per-asset intraday vol from LOB mid prices
+lob['mid'] = (lob['ask_price_1'] + lob['bid_price_1']) / 2
+
+def intraday_vol(group):
+    mids = group.sort_values('time')['mid'].values
+    if len(mids) < 3:
+        return np.nan
+    snap_rets = np.diff(mids) / (mids[:-1] + 1e-8)
+    return snap_rets.std()
+
+intra_vol = lob.groupby(['asset_id', 'trade_day_id']).apply(intraday_vol).reset_index(name='intraday_vol')
+daily = daily.merge(intra_vol, on=['asset_id', 'trade_day_id'], how='left')
+
+# In trend_vol_v4 selection loop, after trend filter:
+med_iv = eligible['intraday_vol'].median()
+eligible = eligible[eligible['intraday_vol'] <= med_iv]
+# Fall back to no LOB filter if data missing
+```
+
+**Expected benefit:** Eliminates stocks at elevated intraday risk not captured by 60d rolling vol; reduces incidence of sudden MDD events. Requires LOB data join.  
+**Status:** `[ ] untested`
+
+---
+
+### 26. Sparse MVP Selection (replace top-N ranking)
+**Source:** [[sparse-minimum-variance-gradient-2025]]  
+**Idea:** Replace the greedy "rank by rolling vol, take top N" step in `trend_vol_v4` with a proper sparse minimum-variance optimisation using Boolean relaxation. This finds the N stocks whose **joint** portfolio variance is minimised, accounting for correlations — typically a different set from the individually-quietest N stocks.
+
+```python
+from sklearn.covariance import LedoitWolf
+import numpy as np
+
+def sparse_mvp(returns_matrix, k, n_iter=300, lambda_max=30.0):
+    """
+    returns_matrix: T×p, eligible assets only (pre-filtered by trend/liquidity)
+    Returns indices of selected assets + MVP weights.
+    """
+    p = returns_matrix.shape[1]
+    if p <= k:
+        # Fewer candidates than target N: use all
+        lw = LedoitWolf().fit(returns_matrix)
+        w = np.linalg.solve(lw.covariance_, np.ones(p))
+        return np.arange(p), np.maximum(w, 0) / np.maximum(w, 0).sum()
+
+    lw = LedoitWolf().fit(returns_matrix)
+    Sigma = lw.covariance_
+
+    s = np.ones(p) / p
+    w = np.ones(p) / p
+
+    for lam in np.linspace(0, lambda_max, n_iter):
+        grad_w = 2 * (Sigma @ w) * s
+        grad_s = -lam * (1 - 2 * s)
+        lr = 0.005
+        w = np.clip(w - lr * grad_w, 0, None)
+        s = np.clip(s - lr * grad_s, 0, 1)
+        if w.sum() > 0: w /= w.sum()
+
+    top_k = np.argsort(s)[-k:]
+    Sigma_sub = Sigma[np.ix_(top_k, top_k)]
+    w_sub = np.linalg.solve(Sigma_sub, np.ones(k))
+    w_sub = np.maximum(w_sub, 0); w_sub /= w_sub.sum()
+    return top_k, w_sub
+
+# Usage in trend_vol_v4 selection:
+# eligible_returns = returns_matrix[:, eligible_idx]  (last 60 rows)
+# selected_local_idx, weights = sparse_mvp(eligible_returns, k=20)
+# selected_idx = eligible_idx[selected_local_idx]
+```
+
+**Expected benefit:** Portfolio variance minimised jointly rather than greedily → lower realised portfolio vol → potential Sharpe/MDD improvement. Key risk: noisy covariance estimate on 60d window; Ledoit-Wolf regularisation essential.  
+**Status:** `[ ] untested`
+
+---
+
+### 27. Robust Rebalancing Shrinkage (continuous vol-managed)
+**Source:** [[robust-minimum-variance-hedging-2026]]  
+**Idea:** Replace the binary `vol_managed` skip rule (if market variance > 2× median → skip) with a continuous shrinkage: scale the rebalancing step by `(1 − δ/σ²)` where δ is the recent RMSE of the rolling-vol forecast. High forecast error → shrink rebalance magnitude → less turnover and position-chasing during volatile/transition periods.
+
+```python
+import numpy as np
+
+def robust_rebalance(current_weights, target_weights,
+                     market_ret_series, vol_window=22, rmse_window=10):
+    """
+    Blend current and target weights by forecast-uncertainty shrinkage.
+    """
+    sigma = market_ret_series.rolling(vol_window).std()
+    # Approximate forecast error: |sigma_t - |r_{t+1}||
+    realised_approx = market_ret_series.abs()
+    rmse_approx = (sigma - realised_approx.shift(1)).abs().rolling(rmse_window).mean()
+
+    sigma_last = sigma.iloc[-1]
+    rmse_last = rmse_approx.iloc[-1]
+
+    if np.isnan(sigma_last) or sigma_last < 1e-8:
+        return target_weights  # insufficient history → full rebalance
+
+    delta = rmse_last / sigma_last           # relative forecast uncertainty
+    alpha = np.clip(1.0 - delta, 0.2, 1.0)  # shrinkage: always rebalance at least 20%
+    return alpha * target_weights + (1.0 - alpha) * current_weights
+
+# In vol_managed step of trend_vol_v4:
+# Replace hard threshold skip with:
+# weights_today = robust_rebalance(weights_yesterday, target_weights, market_ret[:t])
+```
+
+**Expected benefit vs vol_managed_v2:** Softer response avoids binary cliff edge; during D265–D367 MDD episode (high vol + high vol-forecast error), would hold positions more steadily rather than flip-flopping around the threshold. No IS-calibrated hyperparameter needed (only the shrinkage clip 0.2–1.0 is required).  
+**Status:** `[ ] untested`
+
+---
+
 ## Priority Order for Implementation
 
 > Updated 2026-04-20. IC-era signals (1–12) are all complete and ruled out — IC does not predict portfolio alpha due to execution gap. Portfolio backtest is the only valid evaluation metric. Current best: `trend_vol_v2` Score=0.3877.

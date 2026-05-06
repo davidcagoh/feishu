@@ -188,11 +188,14 @@ Jha et al. (2025) introduce adaptive covariance windows via ARFIMA-FIGARCH. What
 - Evidence on regime-aware position sizing specifically in Chinese equity bear episodes
 - Stop-loss or drawdown-triggered rebalancing in long-only portfolios
 - Whether dynamic vol windows (short in high-vol, long in calm) actually reduce MDD vs. fixed 60d (untested on Feishu IS)
+- **New — Robust rebalancing shrinkage (2026-05-06):** Ravagnani et al. (arXiv:2604.02126) derive a closed-form robust hedge ratio that scales down the rebalancing step when vol-forecast uncertainty is high: `h_robust = h_standard × (1 − δ/σ²)`. This provides a continuous alternative to our binary vol-managed skip rule. Signal #27 (see ideas file). Still untested on Feishu IS.
 
 **Priority 3 — Stock selection within the low-vol universe (PARTIALLY ADDRESSED)**
 Li & Li (Finance Research Letters, 2025) identify the **MAX filter** as an orthogonal secondary screen for Chinese A-shares: the MAX effect (maximum single-day return in past month) is independent of IV in China. High-MAX stocks are lottery tickets that revert to high IV quickly. Adding a MAX filter (exclude top 25% by max_ret_20d) to the eligible pool after vol-sorting removes post-spike stocks not caught by 60d rolling vol.
 - Implementable idea: Signal #24 (see ideas file)
 - Caveat: OOS-only test — IS parameter space exhausted
+- **New — MDS intraday screen (2026-05-06):** Chen et al. (arXiv:2605.02326) apply Fréchet variation–based Metric Dependence Screening on 2,938 Chinese A-shares (Jul 2023–Dec 2025); LOB intraday risk curve provides a second, orthogonal selection dimension. Signal #25 (see ideas file).
+- **New — Sparse MVP solver (2026-05-06):** Moka et al. (arXiv:2505.10099) provide a fast gradient-based algorithm that solves the cardinality-constrained minimum-variance selection exactly (vs our greedy top-N). Signal #26 (see ideas file).
 - Still open: quality factors (profitability, earnings stability) — not testable with price/volume-only data; sector-neutral minimum variance — no sector labels in Feishu dataset
 
 **Priority 4 — OOS regime confirmation (PARTIALLY ADDRESSED)**
