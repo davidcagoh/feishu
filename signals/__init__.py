@@ -30,6 +30,10 @@ from signals import (
     erc_vol_managed,
     trend_vol_v2,
     trend_vol_v3,
+    trend_vol_v4,
+    trend_vol_v5,
+    trend_vol_v6,
+    clustering_reversal,
 )
 
 REGISTRY = {
@@ -59,4 +63,8 @@ REGISTRY = {
     "erc_vol_managed": erc_vol_managed,
     "trend_vol_v2": trend_vol_v2,
     "trend_vol_v3": trend_vol_v3,
+    "trend_vol_v4": trend_vol_v4,
+    "trend_vol_v5": trend_vol_v5,
+    "trend_vol_v6": trend_vol_v6,
+    "clustering_reversal": clustering_reversal,
 }

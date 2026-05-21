@@ -2,12 +2,14 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-05-06  
+**Last updated:** 2026-05-20  
 **Papers indexed:** 26  
 **Concepts:** 7  
 **Ideas:** 31 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
 **OOS contingency:** `trend_vol_v5` Score=0.4026 — regime-adaptive overlay (N=30, threshold=0.00 on detected bull days; otherwise v4 defaults). Staged as alternative submission.
+
+**Methodology:** six-layer evaluation stack ported from backtesting (2026-05-20). See [methodology/six-layer-eval.md](methodology/six-layer-eval.md). Driver: `scripts/eval_layers.py`.
 
 ---
 
@@ -180,6 +182,8 @@ Adapt to low_vol: select stocks across clusters
 ## Portfolio Backtest Leaderboard (2026-04-21, D001–D484, N=20, sell-at-open)
 
 > IC metrics are misleading (close-to-close returns ≠ execution IC). Portfolio backtest is ground truth.
+>
+> **Score column note:** these are the **raw** scalarization `0.45·CAGR + 0.30·SR + 0.25·(−MDD)`, used here for cross-strategy *IS comparison*. The **competition** Score is percentile-based across submitting teams (see "Competition Mechanics" below). Strategies with lower raw Score can still rank higher on competition Score if their CAGR/SR/MDD percentile-rank favourably in the team distribution.
 
 | Signal | CAGR | SR | MDD | Score | Notes |
 |--------|------|----|-----|-------|-------|
@@ -201,17 +205,37 @@ Adapt to low_vol: select stocks across clusters
 | return_consistency | −28.7% | −1.408 | 52.63% | −0.683 | hit rate = momentum → reversal |
 | rolling_sharpe | −42.2% | −1.725 | 67.95% | −0.877 | same problem |
 
-## Competition Mechanics (Section 7 of brief)
+## Competition Mechanics (PDF §4, §5, §7 — verified 2026-05-20)
 
-Score = **0.45 × CAGR_pct + 0.30 × SR_pct + 0.25 × MDD_pct**
+**Competition Score (percentile-based, not absolute):**
 
-- Evaluated on **D485–D726** (OOS, ~242 days; data released May 28, 2026; submission deadline June 1)
-- Long-only portfolio, RMB 50M initial capital, min 10 stocks at end of each day
-- Buy at `vwap_0930_0935`; sell at `close` (sell-at-close mode chosen for submission)
-- T+1: shares bought on day t not sellable until t+1
-- Costs: buy = max(turnover × 0.0001, 5); sell = max(turnover × 0.0001, 5) + turnover × 0.0005
-- Lot size: 100 shares minimum
-- Submission: CSV with `trade_day_id, asset_id, buy_percentage, sell_percentage`
+> Score = **0.45 · CAGR_pct + 0.30 · SR_pct + 0.25 · MDD_pct**
+
+where `*_pct` is the **percentile ranking of that metric across all submitted teams** (PDF Section 7.1). Higher percentile = better. MDD_pct ranks **−MDD**, so lower drawdown → higher percentile.
+
+> **Critical implication:** the raw Score values in the leaderboard tables below (e.g. v4 = 0.4024) are **for IS comparison only**, NOT competition placement. Final placement depends on the distribution of competitor submissions, which we cannot observe. A strategy with extreme MDD-rank + extreme SR-rank likely beats a balanced strategy under percentile scoring even if its raw Score is lower.
+
+**Tie-break (PDF §7.2):** CAGR first, then SR.
+
+**OOS evaluation period:** D485–D726 (~242 days; data released 2026-05-28 12:00 Beijing; submission deadline 2026-06-01 12:00 Beijing).
+
+**Submission constraints (PDF §5.6):**
+- **Exactly one CSV per team, no resubmissions.** The sell-mode is encoded in the filename: `TEAMID_sell_open.csv` or `TEAMID_sell_close.csv`.
+- **Sell-mode choice (PDF §4.2):** team picks one of {Sell-at-Open, Sell-at-Close} for the entire OOS period.
+  - **Decision (2026-05-20): submit `sell_open`.** v4 sell-open has lower MDD (7.98% vs 9.30%) and higher Sharpe (1.231 vs 1.196) on IS — both percentile-favourable. CAGR is the one component where sell-close wins (12.46% vs 11.75%); under percentile scoring the SR+MDD combined weight (0.55) dominates the CAGR weight (0.45) for a low-vol strategy.
+- Submission CSV columns: `trade_day_id, asset_id, buy_percentage, sell_percentage` — rows where both are 0 must be removed.
+- Decimal precision: ≤6 decimal places. Duplicate `(trade_day_id, asset_id)` pairs: only last occurrence retained.
+
+**Portfolio rules (PDF §4):**
+- Long-only, RMB 50M initial capital, ≥10 stocks held at each day's close (else submission rejected).
+- Buy at `vwap_0930_0935` (5-min opening VWAP, Section 4.2). Sell at `open` or `close` per chosen sell-mode.
+- T+1: shares bought on day t not sellable until t+1.
+- Costs: buy = max(turnover × 0.0001, 5); sell = max(turnover × 0.0001, 5) + turnover × 0.0005.
+- Lot size: 100 shares minimum; truncate toward zero. If cash insufficient → no fill.
+
+**Prize pool (PDF §8):** RMB 40,000 total — 1st RMB 10,000, 2× 2nd RMB 7,500, 2× 3rd RMB 5,000, 2× Innovation RMB 2,500.
+
+**Shortlisted teams (PDF §6):** Top 10 teams submit a 10–15 page research report with Abstract / Introduction / Factor Construction / Empirical Analysis / Innovation & Limitations / Conclusion sections. The six-layer evaluation stack (`methodology/six-layer-eval.md`) supplies the Empirical Analysis depth that most teams won't have.
 
 ## Critical Discovery: IC ≠ Portfolio Alpha (2026-04-10)
 

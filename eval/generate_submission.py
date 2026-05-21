@@ -208,7 +208,12 @@ def main() -> None:
     parser.add_argument("--excl-illiq", type=float, default=0.05,
                         help="Exclude bottom N%% of stocks by 20d avg amount (default: 0.05)")
     parser.add_argument("--output", default=None,
-                        help="Output CSV path (default: submissions/submission_<sell_mode>.csv)")
+                        help="Output CSV path (default: submissions/submission_<signal>_N<n>_sell_<mode>.csv). "
+                             "For final submission, override with --output submissions/TEAMID_sell_<mode>.csv "
+                             "per PDF §5.3 filename convention.")
+    parser.add_argument("--team-id", default=None,
+                        help="Team identifier. If provided, output filename becomes "
+                             "submissions/TEAMID_sell_<mode>.csv per PDF §5.3.")
     parser.add_argument("--signal", choices=["v4", "v5"], default="v4",
                         help="Signal variant: v4 (primary, Score=0.4024) or v5 (regime-adaptive, Score=0.4026). Default: v4.")
     args = parser.parse_args()
@@ -265,6 +270,11 @@ def main() -> None:
     # Output path
     if args.output:
         out_path = Path(args.output)
+    elif args.team_id:
+        out_dir = root / "submissions"
+        out_dir.mkdir(exist_ok=True)
+        # PDF §5.3 filename convention: TEAMID_sell_<mode>.csv
+        out_path = out_dir / f"{args.team_id}_sell_{args.sell_mode}.csv"
     else:
         out_dir = root / "submissions"
         out_dir.mkdir(exist_ok=True)
