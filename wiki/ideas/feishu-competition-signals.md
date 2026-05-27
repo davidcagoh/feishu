@@ -556,28 +556,40 @@ def cluster_constrained_selection(daily, trade_day, N=20, n_clusters=10, lookbac
 
 ## Tier 2 Additions (from new papers, April 2026 — session 6)
 
-### 24. MAX Filter within Low-Vol Universe
-**Source:** [[low-risk-anomaly-iv-distribution-china-2025]]  
-**Idea:** After computing the low-vol eligible pool (60d rolling vol + trend filter), add a secondary screen that excludes stocks in the top quartile of MAX (maximum single-day return over the past 20 trading days). MAX and IV are orthogonal in Chinese A-shares: stocks with recent extreme single-day spikes have temporarily suppressed rolling-vol rankings but are lottery tickets that revert to high IV quickly.
+### 24. MAX Filter within Low-Vol Universe (overnight variant preferred)
+**Source:** [[low-risk-anomaly-iv-distribution-china-2025]], [[lottery-anomaly-overnight-china-2025]]  
+**Idea:** After computing the low-vol eligible pool (60d rolling vol + trend filter), add a secondary screen that excludes stocks in the top quartile of MAX. MAX and IV are orthogonal in Chinese A-shares (Li & Li 2025). Moreover, Gu, Hu & Xiong (2025) show the MAX anomaly is **entirely driven by overnight returns** — use `max_overnight_ret_20d` for a more precise filter aligned with our execution (we buy at vwap_0930_0935, post overnight gap).
 
 ```python
-# Compute per-asset MAX over trailing 20 trading days
-daily['max_ret_20d'] = daily.groupby('asset_id')['ret'].transform(
+daily['adj_open'] = daily['open'] * daily['adj_factor']
+daily['adj_close'] = daily['close'] * daily['adj_factor']
+daily_sorted = daily.sort_values(['asset_id', 'trade_day_id'])
+daily_sorted['prev_close'] = daily_sorted.groupby('asset_id')['adj_close'].shift(1)
+daily_sorted['overnight_ret'] = daily_sorted['adj_open'] / daily_sorted['prev_close'] - 1
+
+# MAX overnight: highest overnight return in trailing 20 days (preferred variant)
+daily_sorted['max_overnight_20d'] = daily_sorted.groupby('asset_id')['overnight_ret'].transform(
+    lambda x: x.rolling(20).max()
+)
+# Fallback: total-return MAX (Li & Li variant)
+daily_sorted['max_ret_20d'] = daily_sorted.groupby('asset_id')['ret'].transform(
     lambda x: x.rolling(20).max()
 )
 
 # In selection logic, after trend filter, before final N=20 pick:
-def apply_max_filter(eligible_df, quantile=0.75):
-    """Remove stocks in top quartile by recent max daily return."""
-    threshold = eligible_df['max_ret_20d'].quantile(quantile)
-    filtered = eligible_df[eligible_df['max_ret_20d'] <= threshold]
-    # Safeguard: if filter removes too many candidates, relax threshold
-    if len(filtered) < 25:  # need at least 25 to pick N=20 from
+def apply_max_filter(eligible_df, quantile=0.75, use_overnight=True):
+    """Remove stocks in top quartile by recent max overnight (or total) return."""
+    col = 'max_overnight_20d' if use_overnight else 'max_ret_20d'
+    if col not in eligible_df.columns:
+        return eligible_df
+    threshold = eligible_df[col].quantile(quantile)
+    filtered = eligible_df[eligible_df[col] <= threshold]
+    if len(filtered) < 25:  # safeguard: need at least 25 candidates for N=20
         return eligible_df
     return filtered
 ```
 
-**Expected benefit:** Removes post-spike stocks whose 60d vol is temporarily suppressed. Paper confirms these stocks revert to high IV (0.46% vs 0.29%), creating MDD risk. Targets MDD reduction (our binding constraint at 7.98%).  
+**Expected benefit:** Removes post-spike stocks whose 60d vol is temporarily suppressed. Using overnight MAX specifically targets the mechanism (retail overnight demand premium) that makes these stocks underperform after our buy time.  
 **Risk:** On bear-market days with few eligible stocks, the filter may reduce the pool below N=20 → safeguard needed.  
 **Status:** `[ ] untested`
 
@@ -627,10 +639,11 @@ params = {'N': 30, 'threshold': 0.0} if regime == 'bull' else {'N': 20, 'thresho
 
 ---
 
-### 23. Adaptive Volatility Window (FIGARCH-Inspired)
-**Source:** [[adaptive-minimum-variance-arfima-figarch-2025]]  
+### 23. Adaptive Volatility Window (FIGARCH-Inspired / BAWS)
+**Source:** [[adaptive-minimum-variance-arfima-figarch-2025]], [[adaptive-window-selection-risk-forecasting-2026]]  
 **Idea:** Replace fixed 60d rolling vol window with a regime-adaptive window: 20d in high-vol regimes (faster adaptation), 90d in calm regimes (more stable rankings).
 
+**Heuristic variant** (FIGARCH-inspired, from Jha et al.):
 ```python
 def adaptive_window(market_ret, base=60, short=20, long=90):
     vol_22d = market_ret.rolling(22).std().iloc[-1]
@@ -643,6 +656,8 @@ def adaptive_window(market_ret, base=60, short=20, long=90):
     return base        # normal: use base
 ```
 
+**Principled variant (BAWS)** (from Li, Lyu & Wang, arXiv:2603.01157, Mar 2026): bootstrap-based online adaptive window — shrinks on statistical structural-break detection, expands in stable regimes. No heuristic thresholds; threshold is data-driven. See paper `adaptive-window-selection-risk-forecasting-2026.md` for pseudocode.
+
 **Expected improvement:** Faster exclusion of deteriorating stocks at onset of bear episodes; more stable rankings in bull markets. Targets MDD reduction (Priority 2).  
 **Risk:** More complex; adaptive window adds parameter sensitivity. Low risk: only 2 thresholds (1.5× and 0.75×) tied to long-run median, not IS-fitted.  
 **Status:** `[ ] untested`
@@ -654,6 +669,8 @@ def adaptive_window(market_ret, base=60, short=20, long=90):
 ## Tier 1 Additions (from new papers, May 2026 — session 7)
 
 > IS parameter space exhausted. These are OOS-only ideas. Do not test on IS data.
+
+> **Session 8 additions (2026-05-27):** Signal #24 upgraded with overnight-MAX variant; Signal #23 upgraded with BAWS reference; Signal #28 (RWC VaR cap) added. See papers: `lottery-anomaly-overnight-china-2025.md`, `adaptive-window-selection-risk-forecasting-2026.md`, `conformal-var-regime-weighted-2026.md`.
 
 ### 25. MDS Intraday Risk Screen
 **Source:** [[metric-dependence-asset-selection-china-2026]]  
@@ -768,6 +785,53 @@ def robust_rebalance(current_weights, target_weights,
 ```
 
 **Expected benefit vs vol_managed_v2:** Softer response avoids binary cliff edge; during D265–D367 MDD episode (high vol + high vol-forecast error), would hold positions more steadily rather than flip-flopping around the threshold. No IS-calibrated hyperparameter needed (only the shrinkage clip 0.2–1.0 is required).  
+**Status:** `[ ] untested`
+
+---
+
+### 28. Regime-Weighted Conformal VaR Position Cap
+**Source:** [[conformal-var-regime-weighted-2026]]  
+**Idea:** Replace the binary `vol_managed` skip rule with a continuous position-size cap derived from a regime-weighted conformal VaR estimate. When the 95th-percentile loss under regime-similarity weighted history exceeds the target drawdown budget, scale all position sizes proportionally.
+
+```python
+import numpy as np
+
+def rwc_position_scale(market_ret_series, var_target=0.03, kappa=0.05, n_lookback=120):
+    """
+    Returns a [0.2, 1.0] position scale factor based on regime-weighted VaR.
+    market_ret_series: daily cross-sectional mean returns (pandas Series)
+    var_target: target 1-day 95% VaR (e.g. 3% = tolerable daily portfolio loss)
+    kappa: exponential decay rate; half-life = ln(2)/kappa ≈ 14d at kappa=0.05
+    """
+    if len(market_ret_series) < n_lookback:
+        return 1.0
+
+    hist = market_ret_series.iloc[-n_lookback:].values
+    ages = np.arange(n_lookback, 0, -1)
+    weights = np.exp(-kappa * ages)
+    weights /= weights.sum()
+
+    # Weighted 95th-percentile loss
+    losses = -hist
+    sorted_idx = np.argsort(losses)
+    cum_w = np.cumsum(weights[sorted_idx])
+    var_idx = np.searchsorted(cum_w, 0.95)
+    var_95 = losses[sorted_idx[var_idx]]
+
+    # Scale positions: full exposure when VaR ≤ target, reduce proportionally above
+    scale = np.clip(var_target / (var_95 + 1e-8), 0.2, 1.0)
+    return float(scale)
+
+# In trend_vol_v4 rebalancing step (daily):
+# scale = rwc_position_scale(market_ret[:t])
+# buy_pct = target_pct * scale
+# (current_weights also scaled; turnover reduced automatically)
+```
+
+Key distinction from Signal #27 (robust rebalancing): Signal #27 blends old/new weights based on vol-forecast uncertainty; Signal #28 caps the total position size based on tail risk. They are complementary: #27 reduces rebalancing churn, #28 reduces gross exposure.
+
+**Expected benefit:** Continuous position reduction as market tail risk rises; provably calibrated (finite-sample VaR coverage guarantee). No IS-calibrated parameter beyond `kappa=0.05` (half-life ≈ 14d) and `var_target=0.03` (3% daily loss budget).  
+**Addresses:** Priority 2 — MDD reduction. New mechanism orthogonal to Signals #23 (window) and #27 (rebalancing shrinkage).  
 **Status:** `[ ] untested`
 
 ---
