@@ -2,12 +2,13 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-05-20  
+**Last updated:** 2026-05-28  
 **Papers indexed:** 26  
 **Concepts:** 7  
 **Ideas:** 31 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
-**OOS contingency:** `trend_vol_v5` Score=0.4026 — regime-adaptive overlay (N=30, threshold=0.00 on detected bull days; otherwise v4 defaults). Staged as alternative submission.
+**OOS submission:** `submissions/submission_v4_sell_open.csv` — ready. Team ID pending (assigned after May 30 registration deadline). Rename to `TEAMID_sell_open.csv` and upload before June 1 12:00 CST.  
+**OOS regime (D485–D726):** 22.3% bull (54/242 days) — below 30% threshold → v4 confirmed as primary submission. v5 backup at `submissions/submission_v5_sell_open.csv`.
 
 **Methodology:** six-layer evaluation stack ported from backtesting (2026-05-20). See [methodology/six-layer-eval.md](methodology/six-layer-eval.md). Driver: `scripts/eval_layers.py`.
 
@@ -336,7 +337,7 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
 
 1. ~~Update `eval/generate_submission.py` to use `trend_vol_v4`~~ — Done (2026-04-22)
 2. ~~Build OOS bull-regime contingency (`trend_vol_v5`)~~ — Done (2026-04-24)
-3. (May 28) Run BOTH variants when OOS data releases:
+3. ~~(May 28) Run BOTH variants when OOS data releases:~~
    ```bash
    python eval/generate_submission.py --daily data/daily_data_oos.parquet \
        --sell-mode open --n-stocks 20 --signal v4 \
@@ -345,7 +346,7 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
        --sell-mode open --n-stocks 20 --signal v5 \
        --output submissions/submission_v5_adaptive.csv
    ```
-4. Check regime at end of OOS window:
+4. ~~Check regime at end of OOS window:~~ Done 2026-05-28: 22.3% bull → submit v4.
    ```bash
    python -c "import pandas as pd; from signals.regime import regime_labels; \
        daily = pd.read_parquet('data/daily_data_oos.parquet'); \

@@ -6,6 +6,9 @@ Running log of findings from experiments. Each entry is either a **confirmed fac
 
 ## Confirmed Facts
 
+### OOS regime (D485–D726) is neutral-dominant — v4 confirmed as submission (2026-05-28)
+Regime check on released OOS data: neutral=167 days (69.0%), bull=54 (22.3%), stress=21 (8.7%). Bull fraction 22.3% is below the pre-committed 30% threshold → v4 is the primary submission. Consistent with "slow bull" market commentary (CSI 300 barely positive H1 2025) — not a strong enough bull regime to trigger the v5 N-expansion. Submission file: `submissions/submission_v4_sell_open.csv`, 3819 rows, 166 active trading days, validation OK.
+
 ### Mean-reversion dominates A-shares at daily frequency
 All 5 daily signals are positive. IC range 0.019–0.035. This is consistent with the Chinese A-share literature: heavy retail participation → short-term overreaction → reliable next-day reversal. It is not a data artefact.
 
