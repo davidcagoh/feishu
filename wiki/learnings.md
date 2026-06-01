@@ -170,7 +170,7 @@ Updated 2026-04-21. Current best: `trend_vol_v4` Score=0.4024. IS parameter spac
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-04-29. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk and OOS strategy robustness.
+Updated 2026-05-27. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk and OOS strategy robustness.
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless
@@ -178,27 +178,29 @@ Updated 2026-04-29. **Current best:** `trend_vol_v4` (Score=0.4024). IS paramete
 - PCA residuals, Kalman filters on LOB data — same problem
 - Low-vol factor long/short theory — covered by Soebhag et al. (Jun 2025); long-only validation complete
 - Generic SJM / regime-switching factor allocation — covered by Shu & Mulvey (JPM 2025)
-- Long-only minimum variance theory / active set characterisation — covered by Kercheval & Sowunmi (Apr 2026)
+- Long-only minimum variance theory / active set characterisation — covered by Kercheval & Sowunmi (Apr 2026) and Gunther et al. (Mar 2026 arXiv:2603.07692)
 - OOS regime confirmation (Chinese A-share 2025–2026) — sufficiently addressed; two price-only detectors now available
+- Regime-aware position sizing / Wasserstein HMM — covered by Boukardagha (2026, indexed); additional papers not needed
+- Adaptive covariance estimation — now covered by BAWS (2603.01157) and ARFIMA-FIGARCH (indexed); further search low-value
 
 **Priority 1 — Bull-market resilience (FURTHER ADDRESSED)**
 Soebhag et al. (2025) confirm the long leg is robust. Shu & Mulvey (2025) provide the SJM regime detector. Kercheval & Sowunmi (Apr 2026, arXiv:2604.09986) now provide the **formal theoretical proof**: when market betas are all positive (bull environment), the unconstrained LOMV active ratio → 0 (extreme concentration). This formally justifies our N=30 expansion in v5 — without the minimum-N constraint, the portfolio would shrink to ≈ 5 stocks in a bull regime.
 - **Remaining open**: Chinese-specific empirical evidence on low-vol bull performance (factor reviews confirm low-vol underperformed in Q1–Q2 2025 Chinese bull, consistent with theory)
 - **New beta-std proxy**: Cross-sectional beta variance is a theoretically grounded alternative to vol-ratio for bull detection. Compute 60d rolling betas → cross-sectional std → low std = bull (betas converging). Run on IS data D420–D484 to get independent regime confirmation before May 28.
 
-**Priority 2 — MDD reduction in long-only portfolios (PARTIALLY ADDRESSED)**
-Jha et al. (2025) introduce adaptive covariance windows via ARFIMA-FIGARCH. What remains:
-- Evidence on regime-aware position sizing specifically in Chinese equity bear episodes
-- Stop-loss or drawdown-triggered rebalancing in long-only portfolios
-- Whether dynamic vol windows (short in high-vol, long in calm) actually reduce MDD vs. fixed 60d (untested on Feishu IS)
-- **New — Robust rebalancing shrinkage (2026-05-06):** Ravagnani et al. (arXiv:2604.02126) derive a closed-form robust hedge ratio that scales down the rebalancing step when vol-forecast uncertainty is high: `h_robust = h_standard × (1 − δ/σ²)`. This provides a continuous alternative to our binary vol-managed skip rule. Signal #27 (see ideas file). Still untested on Feishu IS.
+**Priority 2 — MDD reduction in long-only portfolios (FURTHER ADDRESSED)**
+Jha et al. (2025) introduce adaptive covariance windows via ARFIMA-FIGARCH. Ravagnani et al. (2026) provide robust rebalancing shrinkage (Signal #27). Two new papers add concrete tools:
+- **New — BAWS adaptive window (2026-05-27):** Li, Lyu & Wang (arXiv:2603.01157, Mar 2026) develop a bootstrap-based online method that adaptively selects the rolling lookback window. Shrinks on structural break detection, expands in stable regimes. Directly applicable to our rolling vol window in `low_vol.py` as a principled replacement for the FIGARCH heuristic in Signal #23. Outperforms fixed and stability-based baselines on VaR/ES.
+- **New — Regime-weighted conformal VaR (2026-05-27):** Schmitt (arXiv:2602.03903, Feb 2026) derives a continuous position-sizing rule: weight past VaR errors by regime similarity + exponential decay → calibrated VaR bound → scale positions by `min(1, var_target / VaR_t)`. Provides finite-sample coverage guarantees. Signal #28 (see ideas file).
+- Remaining open: no paper found specifically studying regime-aware position sizing in Chinese equity bear episodes; global evidence (US/Europe) dominates.
 
-**Priority 3 — Stock selection within the low-vol universe (PARTIALLY ADDRESSED)**
-Li & Li (Finance Research Letters, 2025) identify the **MAX filter** as an orthogonal secondary screen for Chinese A-shares: the MAX effect (maximum single-day return in past month) is independent of IV in China. High-MAX stocks are lottery tickets that revert to high IV quickly. Adding a MAX filter (exclude top 25% by max_ret_20d) to the eligible pool after vol-sorting removes post-spike stocks not caught by 60d rolling vol.
+**Priority 3 — Stock selection within the low-vol universe (FURTHER ADDRESSED)**
+Li & Li (Finance Research Letters, 2025) identify the **MAX filter** as an orthogonal secondary screen for Chinese A-shares. Two follow-up additions:
 - Implementable idea: Signal #24 (see ideas file)
 - Caveat: OOS-only test — IS parameter space exhausted
-- **New — MDS intraday screen (2026-05-06):** Chen et al. (arXiv:2605.02326) apply Fréchet variation–based Metric Dependence Screening on 2,938 Chinese A-shares (Jul 2023–Dec 2025); LOB intraday risk curve provides a second, orthogonal selection dimension. Signal #25 (see ideas file).
-- **New — Sparse MVP solver (2026-05-06):** Moka et al. (arXiv:2505.10099) provide a fast gradient-based algorithm that solves the cardinality-constrained minimum-variance selection exactly (vs our greedy top-N). Signal #26 (see ideas file).
+- **New — MDS intraday screen (2026-05-06):** Chen et al. (arXiv:2605.02326) apply Fréchet variation–based Metric Dependence Screening on 2,938 Chinese A-shares; LOB intraday risk curve provides a second, orthogonal selection dimension. Signal #25 (see ideas file).
+- **New — Sparse MVP solver (2026-05-06):** Moka et al. (arXiv:2505.10099) provide a fast gradient-based algorithm that solves the cardinality-constrained minimum-variance selection exactly. Signal #26 (see ideas file).
+- **New — Overnight MAX filter (2026-05-27):** Gu, Hu & Xiong (Accounting & Finance, 2025) dissect the lottery anomaly in China by overnight/intraday decomposition. The MAX anomaly is entirely driven by **overnight returns**: retail demand accumulates overnight under T+1 constraints, pushing lottery-stock prices to premiums that are partially corrected intraday. Since we buy at `vwap_0930_0935` (post-overnight-gap), using `max_overnight_ret_20d` as the filter variable is more precise than total-return MAX. Upgrades Signal #24. See paper `lottery-anomaly-overnight-china-2025.md`.
 - Still open: quality factors (profitability, earnings stability) — not testable with price/volume-only data; sector-neutral minimum variance — no sector labels in Feishu dataset
 
 **Priority 4 — OOS regime confirmation (PARTIALLY ADDRESSED)**

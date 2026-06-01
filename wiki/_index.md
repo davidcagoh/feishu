@@ -2,12 +2,12 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-05-28  
-**Papers indexed:** 26  
+**Last updated:** 2026-06-01  
+**Papers indexed:** 29  
 **Concepts:** 7  
 **Ideas:** 31 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
-**OOS submission:** `submissions/submission_v4_sell_open.csv` — ready. Team ID pending (assigned after May 30 registration deadline). Rename to `TEAMID_sell_open.csv` and upload before June 1 12:00 CST.  
+**OOS submission:** `submissions/submission_v4_sell_open.csv` — ready. **Team ID received (2026-06-01).** Rename to `TEAMID_sell_open.csv` and upload before June 1 12:00 CST.  
 **OOS regime (D485–D726):** 22.3% bull (54/242 days) — below 30% threshold → v4 confirmed as primary submission. v5 backup at `submissions/submission_v5_sell_open.csv`.
 
 **Methodology:** six-layer evaluation stack ported from backtesting (2026-05-20). See [methodology/six-layer-eval.md](methodology/six-layer-eval.md). Driver: `scripts/eval_layers.py`.
@@ -44,6 +44,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [metric-dependence-asset-selection-china-2026](papers/metric-dependence-asset-selection-china-2026.md) | Large-Scale Asset Selection via Metric Dependence with Enriched High Frequency Information (Chen, He, Chen, May 2026) | Fréchet variation MDS screening of 2,938 Chinese A-share stocks (Jul 2023–Dec 2025); two-stage MDS → min-variance beats return-based and scalar dependence benchmarks | High — LOB intraday risk curve as orthogonal stock selection screen; Priority 3 |
 | [sparse-minimum-variance-gradient-2025](papers/sparse-minimum-variance-gradient-2025.md) | A Scalable Gradient-Based Optimization Framework for Sparse Minimum-Variance Portfolio Selection (Moka, Quiroz, Asimit, Muller, May 2025) | Boolean relaxation converts cardinality-constrained MVP (MIQP) to continuous gradient problem; matches commercial solvers in >95% of instances at polynomial cost | Medium — replaces top-N rolling-vol ranking with joint sparse MVP; better diversification → lower portfolio variance; Priority 3 |
 | [robust-minimum-variance-hedging-2026](papers/robust-minimum-variance-hedging-2026.md) | Hedging Market Risk and Uncertainty via a Robust Portfolio Approach (Ravagnani et al., April 2026) | Box-uncertainty robust hedge ratio shrinks rebalancing magnitude when vol forecast is uncertain; lower turnover + improved downside protection on equity/bond/commodity ETFs 2016–2024 | Medium — robust rebalancing step (continuous shrinkage vs binary skip) addresses MDD reduction; Priority 2 |
+| [lottery-anomaly-overnight-china-2025](papers/lottery-anomaly-overnight-china-2025.md) | Dissecting the Lottery-Like Anomaly: Evidence from China (Gu, Hu, Xiong, Accounting & Finance 2025) | MAX anomaly entirely driven by overnight returns in Chinese A-shares; intraday reversal partial; gambling preference + limits-to-arbitrage amplify effect | High — explains mechanism behind MAX filter (Signal #24); use overnight-return MAX for more precise lottery filter; peer-reviewed Chinese market evidence |
+| [adaptive-window-selection-risk-forecasting-2026](papers/adaptive-window-selection-risk-forecasting-2026.md) | Adaptive Window Selection for Financial Risk Forecasting (Li, Lyu, Wang, arXiv 2026) | BAWS bootstrap-based online method adaptively shrinks window on structural break, expands in stable regimes; outperforms fixed rolling + stability-based alternatives on VaR/ES | High — principled replacement for FIGARCH-heuristic in Signal #23 (adaptive vol window); direct drop-in for low_vol.py rolling window; Priority 2 |
+| [conformal-var-regime-weighted-2026](papers/conformal-var-regime-weighted-2026.md) | Taming Tail Risk in Financial Markets: Conformal Risk Control for Nonstationary Portfolio VaR (Schmitt, arXiv 2026) | Regime-weighted conformal VaR (RWC): exponential time decay + regime-similarity weights → position cap with finite-sample coverage guarantee; validated on CRSP US equity | Medium — continuous position scaling (vs binary skip) for MDD reduction; Signal #28; Priority 2 |
 
 ---
 
