@@ -7,7 +7,7 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 **Concepts:** 7  
 **Ideas:** 31 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
-**OOS submission:** `submissions/submission_v4_sell_open.csv` — ready. **Team ID received (2026-06-01).** Rename to `TEAMID_sell_open.csv` and upload before June 1 12:00 CST.  
+**OOS submission:** `submissions/T016_sell_open.csv` — **SUBMITTED 2026-06-01 02:17 Beijing. Team T016, attempt 1/3.** 2 resubmission attempts remain before 12:00 deadline.  
 **OOS regime (D485–D726):** 22.3% bull (54/242 days) — below 30% threshold → v4 confirmed as primary submission. v5 backup at `submissions/submission_v5_sell_open.csv`.
 
 **Methodology:** six-layer evaluation stack ported from backtesting (2026-05-20). See [methodology/six-layer-eval.md](methodology/six-layer-eval.md). Driver: `scripts/eval_layers.py`.
@@ -357,8 +357,8 @@ Note: -0.030 is a local spike in equal-weight space (neighbours much lower); -0.
    ```
    - If bull days ≥ 30% of OOS window → submit v5 (`submission_v5_adaptive.csv`)
    - Else → submit v4 (`submission_v4_trend_vol.csv`) — primary
-5. Verify CSV format matches competition brief §4 exactly
-6. Backup: `trend_vol_v3` (Score=0.3981) if both v4 and v5 raise concerns
+5. ~~Verify CSV format matches competition brief §4 exactly~~ — OK (columns, decimals, no duplicate keys)
+6. ~~Upload `T016_sell_open.csv` before June 1 12:00~~ — **Done 02:17 Beijing, 9h 41min early**
 
 **Optional if time permits:**
 - Investigate why the 35d trend window helps: how many stocks are filtered out on an average day? Does it vary by market regime?

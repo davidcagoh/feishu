@@ -6,6 +6,9 @@ Running log of findings from experiments. Each entry is either a **confirmed fac
 
 ## Confirmed Facts
 
+### Competition submission filed — T016_sell_open.csv submitted 2026-06-01 02:17 Beijing (9h 41min early)
+Team ID = T016. Uploaded `T016_sell_open.csv` (copy of `submission_v4_sell_open.csv`). Platform confirms: attempt 1/3, status "Submitted for grading". 2 resubmission attempts remain before the 12:00 deadline if needed.
+
 ### OOS regime (D485–D726) is neutral-dominant — v4 confirmed as submission (2026-05-28)
 Regime check on released OOS data: neutral=167 days (69.0%), bull=54 (22.3%), stress=21 (8.7%). Bull fraction 22.3% is below the pre-committed 30% threshold → v4 is the primary submission. Consistent with "slow bull" market commentary (CSI 300 barely positive H1 2025) — not a strong enough bull regime to trigger the v5 N-expansion. Submission file: `submissions/submission_v4_sell_open.csv`, 3819 rows, 166 active trading days, validation OK.
 
