@@ -2,8 +2,8 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-06-01  
-**Papers indexed:** 29  
+**Last updated:** 2026-06-03  
+**Papers indexed:** 31  
 **Concepts:** 7  
 **Ideas:** 31 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
@@ -47,6 +47,8 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [lottery-anomaly-overnight-china-2025](papers/lottery-anomaly-overnight-china-2025.md) | Dissecting the Lottery-Like Anomaly: Evidence from China (Gu, Hu, Xiong, Accounting & Finance 2025) | MAX anomaly entirely driven by overnight returns in Chinese A-shares; intraday reversal partial; gambling preference + limits-to-arbitrage amplify effect | High — explains mechanism behind MAX filter (Signal #24); use overnight-return MAX for more precise lottery filter; peer-reviewed Chinese market evidence |
 | [adaptive-window-selection-risk-forecasting-2026](papers/adaptive-window-selection-risk-forecasting-2026.md) | Adaptive Window Selection for Financial Risk Forecasting (Li, Lyu, Wang, arXiv 2026) | BAWS bootstrap-based online method adaptively shrinks window on structural break, expands in stable regimes; outperforms fixed rolling + stability-based alternatives on VaR/ES | High — principled replacement for FIGARCH-heuristic in Signal #23 (adaptive vol window); direct drop-in for low_vol.py rolling window; Priority 2 |
 | [conformal-var-regime-weighted-2026](papers/conformal-var-regime-weighted-2026.md) | Taming Tail Risk in Financial Markets: Conformal Risk Control for Nonstationary Portfolio VaR (Schmitt, arXiv 2026) | Regime-weighted conformal VaR (RWC): exponential time decay + regime-similarity weights → position cap with finite-sample coverage guarantee; validated on CRSP US equity | Medium — continuous position scaling (vs binary skip) for MDD reduction; Signal #28; Priority 2 |
+| [continuous-timing-growth-defensive-2026](papers/continuous-timing-growth-defensive-2026.md) | Continuous Timing Signals for Growth-Defensive Style Allocation (Xiong, arXiv May 2026) | Tanh-mapped continuous score + EWMA smoothing for growth/defensive ETF switching; Sharpe 1.01 OOS over 2017–2026 at 50% max tilt | High — concrete continuous-signal replacement for binary v4/v5 regime detector; Signal #29; Priority 1 |
+| [gnn-vol-forecast-portfolio-2026](papers/gnn-vol-forecast-portfolio-2026.md) | Do Better Volatility Forecasts Lead to Better Portfolios? Evidence from Graph Neural Networks (Wade, arXiv May 2026) | Three objectives (MSE, ranking accuracy, portfolio Sharpe) select three different optimal models on S&P 500 465-stock RV data 2015–2025; cross-sectional Spearman ρ is the right metric for portfolio use | Medium — validates that vol-ranking (not IC/MSE) is the correct evaluation metric; no direct signal change; research report citation |
 
 ---
 
@@ -159,6 +161,18 @@ K-means clustering by vol/return/turnover features
     ↓
 Adapt to low_vol: select stocks across clusters
 → reduces concentration from 7→~N effective bets
+
+Continuous Growth-Defensive Timing (Xiong 2026)     GNN Vol → Portfolio (Wade 2026)
+    ↓                                                     ↓
+tanh(vol_ratio + trend) → EWMA → N ∈ [20,30]        3 objectives = 3 different models:
+Continuous v4/v5 interpolation (Signal #29)          MSE ≠ ranking ≠ Sharpe
+    ↓                                                     ↓
+Replaces binary vol-ratio cliff in regime.py         Cross-sectional Spearman ρ
+Prevents mislabelling in low-vol capitulation        is the right metric for min-var
+     ↘                                               selection (validates vol-ranking)
+       Both papers confirm (June 2026):
+       Continuous signals > binary thresholds
+       for regime-based portfolio adaptation
 ```
 
 ---

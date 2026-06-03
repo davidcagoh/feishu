@@ -836,6 +836,55 @@ Key distinction from Signal #27 (robust rebalancing): Signal #27 blends old/new 
 
 ---
 
+---
+
+## Tier 1 Additions (from new papers, June 2026 — session 8)
+
+> Competition submission filed (2026-06-01). These are post-competition refinements for future reference and the research report.
+
+### 29. Continuous Tanh-Score Regime Detector
+**Source:** [[continuous-timing-growth-defensive-2026]]  
+**Idea:** Replace the binary `vol_ratio < 0.75 → N=30` cliff-edge in `signals/regime.py` with a continuous tanh-mapped score that smoothly interpolates N ∈ [20, 30]. Combine the vol-ratio signal with the 35d market trend signal; apply EWMA smoothing to prevent whipsawing. Based on Xiong (arXiv:2605.20636, May 2026): tanh + EWMA achieves Sharpe 1.01 OOS over 2017–2026 for growth-defensive ETF switching with 10bp costs.
+
+```python
+import numpy as np
+import pandas as pd
+
+def continuous_regime_n(market_ret, n_base=20, n_bull=30,
+                        vol_window=22, median_window=120, ewma_span=5):
+    """
+    Returns a continuous N between n_base (bear) and n_bull (bull).
+    Replaces binary threshold in signals/regime.py.
+    """
+    # Vol-ratio signal: positive = low vol = bullish
+    vol_22d = market_ret.rolling(vol_window).std()
+    vol_median = vol_22d.rolling(median_window).median()
+    vol_signal = -(vol_22d / (vol_median + 1e-8) - 1.0)  # high vol → negative
+
+    # 35d market trend Sharpe
+    trend_signal = market_ret.rolling(35).mean() / (market_ret.rolling(35).std() + 1e-8)
+
+    # Softplus-smoothed combination, tanh compression, EWMA
+    raw_score = 0.6 * vol_signal + 0.4 * trend_signal
+    smooth_score = pd.Series(np.tanh(raw_score.values),
+                             index=raw_score.index).ewm(span=ewma_span).mean()
+
+    # Map score ∈ [-1, 1] → N ∈ [n_base, n_bull]
+    alpha = (smooth_score + 1.0) / 2.0
+    n_cont = n_base + (n_bull - n_base) * alpha
+    return n_cont.round().clip(n_base, n_bull).astype(int)
+```
+
+**Improvement over current binary switch (`signals/regime.py`):** Known weakness of binary switch is cliff-edge labelling (D458–D481 bull but market declined −13.6%). Continuous score would assign partial weight (N=23–26 range) rather than full v5 mode; less exposed to mis-labelling errors.
+
+**Evaluation note (cross-sectional Spearman ρ):** Per Wade (arXiv:2605.19278), the right metric for evaluating vol-ranking stability is cross-sectional Spearman rank correlation, not MSE. Use this to validate that the continuous N assignment doesn't destabilise the vol-ranked selection across adjacent days.
+
+**Expected benefit:** Smoother N transition; reduced turnover on regime switch days; partial protection against cliff-edge mislabelling (e.g., low-vol capitulation episodes).  
+**Risk:** Adds one ewma_span hyperparameter; continuous interpolation in N is harder to interpret than binary v4/v5.  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
 ## Priority Order for Implementation
 
 > Updated 2026-04-20. IC-era signals (1–12) are all complete and ruled out — IC does not predict portfolio alpha due to execution gap. Portfolio backtest is the only valid evaluation metric. Current best: `trend_vol_v2` Score=0.3877.

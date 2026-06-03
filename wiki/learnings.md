@@ -185,17 +185,22 @@ Updated 2026-05-27. **Current best:** `trend_vol_v4` (Score=0.4024). IS paramete
 - OOS regime confirmation (Chinese A-share 2025–2026) — sufficiently addressed; two price-only detectors now available
 - Regime-aware position sizing / Wasserstein HMM — covered by Boukardagha (2026, indexed); additional papers not needed
 - Adaptive covariance estimation — now covered by BAWS (2603.01157) and ARFIMA-FIGARCH (indexed); further search low-value
+- Chinese-specific empirical evidence on low-vol bull performance — CLOSED 2026-06-03; MSCI China Min-Vol data confirms ~4% underperformance in 2024 and 2025 bull runs
+- Growth-defensive style timing methodology — covered by Xiong (arXiv:2605.20636, May 2026, indexed); Signal #29
+- Vol ranking vs MSE as portfolio metric — covered by Wade (arXiv:2605.19278, May 2026, indexed)
 
 **Priority 1 — Bull-market resilience (FURTHER ADDRESSED)**
 Soebhag et al. (2025) confirm the long leg is robust. Shu & Mulvey (2025) provide the SJM regime detector. Kercheval & Sowunmi (Apr 2026, arXiv:2604.09986) now provide the **formal theoretical proof**: when market betas are all positive (bull environment), the unconstrained LOMV active ratio → 0 (extreme concentration). This formally justifies our N=30 expansion in v5 — without the minimum-N constraint, the portfolio would shrink to ≈ 5 stocks in a bull regime.
-- **Remaining open**: Chinese-specific empirical evidence on low-vol bull performance (factor reviews confirm low-vol underperformed in Q1–Q2 2025 Chinese bull, consistent with theory)
-- **New beta-std proxy**: Cross-sectional beta variance is a theoretically grounded alternative to vol-ratio for bull detection. Compute 60d rolling betas → cross-sectional std → low std = bull (betas converging). Run on IS data D420–D484 to get independent regime confirmation before May 28.
+- **New (2026-06-03) — Continuous tanh-score regime detector (arXiv:2605.20636):** Xiong (May 2026) shows that continuous tanh-mapped signals + EWMA smoothing outperform binary threshold switching for growth-defensive style allocation (Sharpe 1.01 OOS 2017–2026). Directly applicable to our binary v4/v5 switch: replace `vol_ratio < 0.75 → N=30` cliff-edge with a continuous interpolation of N ∈ [20,30]. Signal #29 (see ideas file). Post-competition refinement.
+- **MSCI data (2026-06-03):** MSCI China All Shares Minimum Volatility Index underperformed the benchmark by ~4% in both 2024 (12.57% vs 16.38%) and 2025 (27.25% vs 31.17%). Confirms low-vol underperforms in Chinese bull runs — exactly as theory predicts and consistent with our OOS data (D485+, 22.3% bull days). This closes the "Chinese-specific empirical evidence" remaining item under Priority 1.
+- **Resolved**: Chinese-specific empirical evidence on low-vol bull performance is now confirmed by MSCI index data. Priority 1 is fully addressed.
 
 **Priority 2 — MDD reduction in long-only portfolios (FURTHER ADDRESSED)**
 Jha et al. (2025) introduce adaptive covariance windows via ARFIMA-FIGARCH. Ravagnani et al. (2026) provide robust rebalancing shrinkage (Signal #27). Two new papers add concrete tools:
 - **New — BAWS adaptive window (2026-05-27):** Li, Lyu & Wang (arXiv:2603.01157, Mar 2026) develop a bootstrap-based online method that adaptively selects the rolling lookback window. Shrinks on structural break detection, expands in stable regimes. Directly applicable to our rolling vol window in `low_vol.py` as a principled replacement for the FIGARCH heuristic in Signal #23. Outperforms fixed and stability-based baselines on VaR/ES.
 - **New — Regime-weighted conformal VaR (2026-05-27):** Schmitt (arXiv:2602.03903, Feb 2026) derives a continuous position-sizing rule: weight past VaR errors by regime similarity + exponential decay → calibrated VaR bound → scale positions by `min(1, var_target / VaR_t)`. Provides finite-sample coverage guarantees. Signal #28 (see ideas file).
-- Remaining open: no paper found specifically studying regime-aware position sizing in Chinese equity bear episodes; global evidence (US/Europe) dominates.
+- **New (2026-06-03) — Cross-sectional vol ranking as correct objective:** Wade (arXiv:2605.19278, May 2026) shows that cross-sectional Spearman rank correlation (not MSE) is the right evaluation metric for vol forecasting in portfolio construction. Validates our vol-ranking approach to stock selection. No new signal needed; confirms current methodology.
+- Remaining open: no paper found specifically studying regime-aware position sizing in Chinese equity bear episodes; global evidence (US/Europe) dominates. Consider closed — competition submission filed.
 
 **Priority 3 — Stock selection within the low-vol universe (FURTHER ADDRESSED)**
 Li & Li (Finance Research Letters, 2025) identify the **MAX filter** as an orthogonal secondary screen for Chinese A-shares. Two follow-up additions:
