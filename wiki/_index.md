@@ -2,10 +2,10 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-06-03  
-**Papers indexed:** 31  
+**Last updated:** 2026-06-10  
+**Papers indexed:** 34  
 **Concepts:** 7  
-**Ideas:** 31 signals catalogued, 24 implemented  
+**Ideas:** 34 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
 **OOS submission:** `submissions/T016_sell_open.csv` — **SUBMITTED 2026-06-01 02:17 Beijing. Team T016, attempt 1/3.** 2 resubmission attempts remain before 12:00 deadline.  
 **OOS regime (D485–D726):** 22.3% bull (54/242 days) — below 30% threshold → v4 confirmed as primary submission. v5 backup at `submissions/submission_v5_sell_open.csv`.
@@ -49,6 +49,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [conformal-var-regime-weighted-2026](papers/conformal-var-regime-weighted-2026.md) | Taming Tail Risk in Financial Markets: Conformal Risk Control for Nonstationary Portfolio VaR (Schmitt, arXiv 2026) | Regime-weighted conformal VaR (RWC): exponential time decay + regime-similarity weights → position cap with finite-sample coverage guarantee; validated on CRSP US equity | Medium — continuous position scaling (vs binary skip) for MDD reduction; Signal #28; Priority 2 |
 | [continuous-timing-growth-defensive-2026](papers/continuous-timing-growth-defensive-2026.md) | Continuous Timing Signals for Growth-Defensive Style Allocation (Xiong, arXiv May 2026) | Tanh-mapped continuous score + EWMA smoothing for growth/defensive ETF switching; Sharpe 1.01 OOS over 2017–2026 at 50% max tilt | High — concrete continuous-signal replacement for binary v4/v5 regime detector; Signal #29; Priority 1 |
 | [gnn-vol-forecast-portfolio-2026](papers/gnn-vol-forecast-portfolio-2026.md) | Do Better Volatility Forecasts Lead to Better Portfolios? Evidence from Graph Neural Networks (Wade, arXiv May 2026) | Three objectives (MSE, ranking accuracy, portfolio Sharpe) select three different optimal models on S&P 500 465-stock RV data 2015–2025; cross-sectional Spearman ρ is the right metric for portfolio use | Medium — validates that vol-ranking (not IC/MSE) is the correct evaluation metric; no direct signal change; research report citation |
+| [continuous-cash-overlay-filters-2026](papers/continuous-cash-overlay-filters-2026.md) | Continuous Cash-Overlay Filters for a Static Growth-Defensive Risk Sleeve (Xiong, arXiv Jun 2026) | Slow-tail + V-shape crash-brake filters combined via max-cash rule; CAGR 16.6%→20.5%, MDD −33.6%→−16.8% IS; companion to indexed arXiv:2605.20636 | High — concrete two-filter replacement for binary vol_managed skip; Signal #30; Priority 2 |
+| [regime-vol-forecast-return-prediction-china-2026](papers/regime-vol-forecast-return-prediction-china-2026.md) | Volatility Forecasting and Return Prediction under Market Regimes: Evidence from High-Frequency Chinese Equity Data (Fang & Ślepaczuk, arXiv Jun 2026) | HARQ + Markov-switching GJR-GARCH → XGBoost two-stage framework outperforms baseline HARQ on CSI 300 data 2005–2023; regime indicators improve return prediction | High — regime-conditioned vol for low_vol.py stock ranking; XGBoost return prediction layer; Priority 2/3 |
+| [asymmetric-return-extrapolation-stochastic-vol-2026](papers/asymmetric-return-extrapolation-stochastic-vol-2026.md) | Asymmetric Nonlinear Return Extrapolation and Optimal Portfolio Choice under Stochastic Volatility (Yan, Ye, Zong, Chen, arXiv Jun 2026) | Nonlinear asymmetric extrapolation (saturation + gain/loss asymmetry) under Heston SV generates 4 Chinese A-share anomalies; UIBE Beijing + Jiangnan University authors | Medium — behavioral foundation for asymmetric trend filter (add upper bound threshold); Signal #32; Priority 3 |
 
 ---
 
@@ -173,6 +176,30 @@ Prevents mislabelling in low-vol capitulation        is the right metric for min
        Both papers confirm (June 2026):
        Continuous signals > binary thresholds
        for regime-based portfolio adaptation
+
+Continuous Cash-Overlay (Xiong arXiv:2606.09025)    Asymmetric Extrapolation (Yan et al. 2026)
+    ↓                                                     ↓
+SEQUEL to arXiv:2605.20636 (Signal #29):             Chinese retail investors extrapolate gains
+style timing → NOW cash-fraction overlay             > losses; saturation at extremes
+Two filters: slow-tail + crash-brake                 Optimal portfolio = myopic + var-hedge
+Max-cash rule: daily w_cash = max(f1, f2)           + sentiment-hedge demand
+    ↓                                                     ↓
+MDD -33.6% → -16.8% (halved OOS)                    Stocks with recent gains: high correction
+CAGR 16.6% → 20.5% on 2017–2026 window              risk (extrapolation at full strength)
+Signal #30: replaces binary vol_managed skip         Signal #32: asymmetric trend threshold
+     ↘                                               ↙
+       Together: continuous cash overlay (slow + fast) + asymmetric
+       upper bound on trend filter → both address MDD reduction via
+       different mechanisms (portfolio sizing vs stock selection)
+
+Regime-Vol Forecast + Return Prediction (Fang & Ślepaczuk 2026, CSI 300)
+    ↓
+HARQ + Markov-switching GJR-GARCH identifies regime-specific vol per stock
+XGBoost return prediction uses vol forecasts + regime indicators as features
+    ↓
+Extends our simple 60d rolling std: regime-conditional vol distinguishes
+"temporarily elevated vol" from "structurally high vol"
+Signal #31: regime-augmented vol for low_vol.py stock ranking
 ```
 
 ---

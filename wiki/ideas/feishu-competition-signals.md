@@ -885,6 +885,127 @@ def continuous_regime_n(market_ret, n_base=20, n_bull=30,
 
 ---
 
+---
+
+## Tier 1 Additions (from new papers, June 2026 — session 9)
+
+> Competition submission filed 2026-06-01. Post-competition refinements for future use and research report.
+
+### 30. Two-Filter Continuous Cash Overlay (Slow-Tail + Crash-Brake)
+**Source:** [[continuous-cash-overlay-filters-2026]]  
+**Idea:** Replace the binary `vol_managed` skip rule with two complementary continuous cash-weight filters combined via a max-cash rule. The slow-tail filter detects persistent bear deterioration; the crash-brake detects fast drawdown episodes. Together they halve MDD (−33.6% → −16.8% IS on 2017–2026) while improving CAGR.
+
+```python
+import numpy as np
+import pandas as pd
+
+def slow_tail_cash(market_ret, vol_window=22, median_window=120):
+    """Cash weight [0,1] for persistent regime deterioration."""
+    vol_22d = market_ret.rolling(vol_window).std()
+    vol_med = vol_22d.rolling(median_window).median()
+    ratio = (vol_22d / (vol_med + 1e-8)).iloc[-1]
+    excess = max(ratio - 1.0, 0.0)
+    return float(np.tanh(excess * 1.5))  # 0 at ratio=1, ~0.76 at ratio=2
+
+def crash_brake_cash(portfolio_cumret, fast_window=5, threshold=0.04):
+    """Cash weight [0,1] for fast drawdown events + V-shape re-entry."""
+    fast_draw = portfolio_cumret.diff(fast_window).iloc[-1]
+    if fast_draw < -threshold:
+        return 0.8
+    recovery = portfolio_cumret.diff(fast_window).iloc[-1]
+    if recovery > 0:
+        return max(0.0, 0.8 - (recovery / threshold) * 0.4)
+    return 0.0
+
+def max_cash_overlay(market_ret, portfolio_cumret):
+    """Daily risky-sleeve scale = 1 - max(slow_tail, crash_brake)."""
+    slow = slow_tail_cash(market_ret)
+    crash = crash_brake_cash(portfolio_cumret)
+    return 1.0 - max(slow, crash)
+
+# In trend_vol_v4 daily rebalancing step:
+# scale = max_cash_overlay(market_ret[:t], portfolio_cumret[:t])
+# target_buy_pct = base_buy_pct * scale
+```
+
+**Advantage over binary vol_managed:** Two orthogonal mechanisms — slow-tail catches gradual bear episodes (like our D265–D367 drawdown), crash-brake catches sudden sell-offs. Max-cash is parameter-free beyond the two threshold constants.  
+**Performance benchmark:** IS CAGR 16.6%→20.5%, MDD −33.6%→−16.8% on 2017–2026 growth-defensive basket.  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
+### 31. Regime-Augmented Vol for Stock Ranking (HARQ + MS-GJR-GARCH)
+**Source:** [[regime-vol-forecast-return-prediction-china-2026]]  
+**Idea:** Replace simple 60d rolling std in `low_vol.py` with a regime-conditional volatility forecast from a GJR-GARCH model. Stocks in a high-vol *regime* (not just a high-vol *window*) are excluded; stocks that happen to have elevated realised vol due to a market-wide spike but are fundamentally quiet are retained.
+
+```python
+from arch import arch_model
+import numpy as np
+import pandas as pd
+
+def gjr_garch_vol(return_series, window=252):
+    """
+    GJR-GARCH(1,1) conditional vol for one asset.
+    Returns expected next-period vol (annualised).
+    Falls back to rolling std if insufficient data or fit fails.
+    """
+    r = return_series.dropna()
+    if len(r) < window:
+        return float(r.std() * np.sqrt(252))
+    r_scaled = r.iloc[-window:].values * 100
+    try:
+        gjr = arch_model(r_scaled, vol='Garch', p=1, o=1, q=1)
+        res = gjr.fit(disp='off', show_warning=False,
+                      options={'maxiter': 100, 'ftol': 1e-5})
+        cond_vol = float(res.conditional_volatility.iloc[-1]) / 100 * np.sqrt(252)
+        return cond_vol
+    except Exception:
+        return float(r.std() * np.sqrt(252))
+
+# In low_vol.py, replace:
+# daily['vol_60d'] = daily.groupby('asset_id')['ret'].transform(lambda x: x.rolling(60).std())
+# With:
+# daily['vol_gjr'] = daily.groupby('asset_id')['ret'].transform(
+#     lambda x: pd.Series(
+#         [gjr_garch_vol(x.iloc[:i+1]) for i in range(len(x))],
+#         index=x.index
+#     )
+# )
+# Note: compute daily is slow; use monthly refresh (recompute every 5 days)
+```
+
+**Performance context:** Regime-aware vol on CSI 300 (Fang & Ślepaczuk, 2026) outperforms baseline HARQ on vol forecasting; incorporating regime indicators into XGBoost return prediction improves OOS economic performance. Chinese market validated.  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
+### 32. Asymmetric Trend Filter (Gain Upper Bound)
+**Source:** [[asymmetric-return-extrapolation-stochastic-vol-2026]]  
+**Idea:** Our current trend filter has a *lower* threshold only (exclude stocks with trend_35d < −0.025). Chinese retail investors extrapolate *gains* more aggressively than losses (Yan et al., arXiv:2606.10805). Adding an *upper* threshold (exclude stocks with trend_35d > 0.00) prevents including retail-chased recent winners in the low-vol basket.
+
+```python
+def asymmetric_trend_filter(eligible_df, lower=-0.05, upper=0.00):
+    """
+    Two-sided trend filter grounded in asymmetric extrapolation theory.
+    Lower: exclude structural decliners (same as current but looser at -0.05)
+    Upper: exclude retail-chased recent winners (NEW vs current filter)
+    
+    Current: single threshold=-0.025 (no upper bound)
+    Proposed: [lower, upper] = [-0.05, 0.00]
+    """
+    mask = (eligible_df['trend_35d'] >= lower) & (eligible_df['trend_35d'] <= upper)
+    return eligible_df[mask]
+
+# In trend_vol_v4 selection loop (after liquidity filter, before vol ranking):
+# eligible = asymmetric_trend_filter(eligible)
+```
+
+**Theory basis:** Sentiment-distorted myopic demand is largest for stocks with recent positive return streaks → those stocks have highest correction risk → excluding them (upper=0.00) removes the highest-beta-to-retail-sentiment stocks from the basket.  
+**Risk:** Upper bound tightens the eligible universe, especially in bull markets when most stocks trend up — may reduce diversification on bull days. Consider upper=0.01 or 0.02 as looser variants.  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
 ## Priority Order for Implementation
 
 > Updated 2026-04-20. IC-era signals (1–12) are all complete and ruled out — IC does not predict portfolio alpha due to execution gap. Portfolio backtest is the only valid evaluation metric. Current best: `trend_vol_v2` Score=0.3877.
