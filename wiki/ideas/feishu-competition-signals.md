@@ -591,6 +591,7 @@ def apply_max_filter(eligible_df, quantile=0.75, use_overnight=True):
 
 **Expected benefit:** Removes post-spike stocks whose 60d vol is temporarily suppressed. Using overnight MAX specifically targets the mechanism (retail overnight demand premium) that makes these stocks underperform after our buy time.  
 **Risk:** On bear-market days with few eligible stocks, the filter may reduce the pool below N=20 → safeguard needed.  
+**Upgrade path (MAXβ, from Bali et al. SSRN:6065166):** Replace `max_overnight_20d` with `max_beta_20d` — the average of the top-5 idiosyncratic daily returns (daily_ret − market_ret) over 20 days. MAXβ is more precise: removes systematic market-rally days from the lottery signal, isolating idiosyncratic retail demand. In Chinese retail-dominated markets (almost universal), high MAXβ predicts underperformance independently of past return persistence, making it safer to combine with our momentum-agnostic low-vol filter. See `wiki/papers/max-beta-lottery-stocks-2026.md`.  
 **Status:** `[ ] untested`
 
 ---
@@ -1002,6 +1003,82 @@ def asymmetric_trend_filter(eligible_df, lower=-0.05, upper=0.00):
 
 **Theory basis:** Sentiment-distorted myopic demand is largest for stocks with recent positive return streaks → those stocks have highest correction risk → excluding them (upper=0.00) removes the highest-beta-to-retail-sentiment stocks from the basket.  
 **Risk:** Upper bound tightens the eligible universe, especially in bull markets when most stocks trend up — may reduce diversification on bull days. Consider upper=0.01 or 0.02 as looser variants.  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
+---
+
+## Tier 2 Additions (from new papers, July 2026 — session 10)
+
+> Competition submission filed 2026-06-01. Post-competition refinements.
+
+### 33. Low-Turnover Secondary Filter within Low-Vol Universe
+**Source:** [[interpretable-factor-decomposition-china-2026]]  
+**Idea:** After the low-vol + trend filter, add a secondary screen that removes stocks in the top quartile of 20-day average daily turnover. SHAP attribution on 3,632 Chinese A-share stocks (Han et al., 2026) shows turnover and momentum account for 58.2% of predictive attribution — in Chinese A-shares, high turnover signals retail crowding (T+1 amplification → next-day reversal). Stocks that happen to be in our low-vol pool but have elevated recent turnover are likely to be retail-chased and face hidden reversal risk.
+
+```python
+# Compute 20-day rolling average amount (proxy for turnover)
+daily_sorted = daily.sort_values(['asset_id', 'trade_day_id'])
+daily_sorted['turnover_20d'] = daily_sorted.groupby('asset_id')['amount'].transform(
+    lambda x: x.rolling(20).mean()
+)
+
+def apply_low_turnover_filter(eligible_df, quantile=0.75):
+    """
+    Removes stocks in top quartile of recent turnover.
+    Targets retail-crowding risk invisible in 60d vol ranking.
+    Safeguard: never reduces pool below 25 candidates.
+    """
+    threshold = eligible_df['turnover_20d'].quantile(quantile)
+    filtered = eligible_df[eligible_df['turnover_20d'] <= threshold]
+    if len(filtered) < 25:
+        return eligible_df
+    return filtered
+
+# In trend_vol_v4 selection loop, after trend filter, before final vol ranking:
+# eligible = apply_low_turnover_filter(eligible)
+```
+
+**Distinction from failed stable_turnover_momentum (Zhang et al. 2025):** That signal selected stocks by past price/turnover stability combined with price momentum → momentum contamination → execution-gap failure (CAGR −47%). This signal only screens by turnover LEVEL as a negative screen; the low-vol ranking does all positive selection. Direction: prefer LOW turnover (quiet stocks, not retail targets).  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
+### 34. Robust MAD Vol Estimation (replaces rolling std in low_vol.py)
+**Source:** [[gmvp-decision-geometry-heavy-tails-2026]]  
+**Idea:** Replace the 60-day rolling standard deviation in `low_vol.py` with a Median Absolute Deviation (MAD × 1.4826) estimator. Fonseca (2026) proves that standard matrix-norm-minimising covariance estimators (including sample covariance) are suboptimal for GMVP decision quality under heavy-tailed returns (tail index κ ∈ (2,4)). Chinese A-share daily returns have fat tails — particularly from ±10% limit days — which inflate sample std for stocks that hit a single limit, making them appear riskier than they are over the remainder of the window. MAD is resistant to single outlier events.
+
+```python
+import numpy as np
+
+def mad_vol(series, window=60):
+    """
+    Median Absolute Deviation as a robust scale estimator.
+    × 1.4826 is a consistent estimator of std under normality;
+    resistant to the ±10% limit-day outliers in Chinese A-shares.
+    """
+    def rolling_mad(x):
+        vals = x.dropna().values
+        if len(vals) < 10:
+            return np.nan
+        return np.median(np.abs(vals - np.median(vals))) * 1.4826
+    return series.rolling(window).apply(rolling_mad, raw=False)
+
+# Drop-in replacement in low_vol.py:
+# OLD: daily['vol_60d'] = daily.groupby('asset_id')['ret'].transform(
+#          lambda x: x.rolling(60).std()
+#      )
+# NEW:
+daily['vol_60d'] = daily.groupby('asset_id')['ret'].transform(
+    lambda x: mad_vol(x, window=60)
+)
+
+# All downstream logic (liquidity filter, trend filter, N-selection) unchanged.
+```
+
+**Expected benefit:** Stocks that hit a single ±10% limit day within the 60-day window no longer have their vol ranking inflated by that day. The ranking better reflects the stock's normal-day behaviour. Potential reduction in false exclusions (stocks that look riskier than they are) and false inclusions (stocks that appear quiet after a spike).  
+**Caveat:** MAD can underestimate vol in genuinely clustered-volatility regimes (GARCH effects). If a stock's vol is persistently elevated, both std and MAD will detect it; the benefit is only for isolated spikes.  
 **Status:** `[ ] post-competition refinement — do not test on IS data`
 
 ---

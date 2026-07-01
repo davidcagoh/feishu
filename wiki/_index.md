@@ -2,8 +2,8 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-06-10  
-**Papers indexed:** 34  
+**Last updated:** 2026-07-01  
+**Papers indexed:** 37  
 **Concepts:** 7  
 **Ideas:** 34 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
@@ -52,6 +52,9 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [continuous-cash-overlay-filters-2026](papers/continuous-cash-overlay-filters-2026.md) | Continuous Cash-Overlay Filters for a Static Growth-Defensive Risk Sleeve (Xiong, arXiv Jun 2026) | Slow-tail + V-shape crash-brake filters combined via max-cash rule; CAGR 16.6%→20.5%, MDD −33.6%→−16.8% IS; companion to indexed arXiv:2605.20636 | High — concrete two-filter replacement for binary vol_managed skip; Signal #30; Priority 2 |
 | [regime-vol-forecast-return-prediction-china-2026](papers/regime-vol-forecast-return-prediction-china-2026.md) | Volatility Forecasting and Return Prediction under Market Regimes: Evidence from High-Frequency Chinese Equity Data (Fang & Ślepaczuk, arXiv Jun 2026) | HARQ + Markov-switching GJR-GARCH → XGBoost two-stage framework outperforms baseline HARQ on CSI 300 data 2005–2023; regime indicators improve return prediction | High — regime-conditioned vol for low_vol.py stock ranking; XGBoost return prediction layer; Priority 2/3 |
 | [asymmetric-return-extrapolation-stochastic-vol-2026](papers/asymmetric-return-extrapolation-stochastic-vol-2026.md) | Asymmetric Nonlinear Return Extrapolation and Optimal Portfolio Choice under Stochastic Volatility (Yan, Ye, Zong, Chen, arXiv Jun 2026) | Nonlinear asymmetric extrapolation (saturation + gain/loss asymmetry) under Heston SV generates 4 Chinese A-share anomalies; UIBE Beijing + Jiangnan University authors | Medium — behavioral foundation for asymmetric trend filter (add upper bound threshold); Signal #32; Priority 3 |
+| [interpretable-factor-decomposition-china-2026](papers/interpretable-factor-decomposition-china-2026.md) | Interpretable Factor Decomposition for Decision Intelligence in Large-Scale Financial Markets: Evidence from China's A-Share Market (Han, Xiao, Zhang, Zheng, arXiv Jun 2026) | XGBoost + TreeSHAP on 3,632 Chinese A-shares 2009–2019; behavioral factors (turnover + momentum) = 58.2% SHAP attribution; +2.38%/month OOS Sharpe 2.23 L/S | High — confirms turnover dominates in Chinese A-shares; Signal #33 low-turnover secondary filter within low-vol universe; Priority 3 |
+| [gmvp-decision-geometry-heavy-tails-2026](papers/gmvp-decision-geometry-heavy-tails-2026.md) | The Decision Geometry of Covariance Estimation for the Global Minimum-Variance Portfolio under Heavy Tails (Fonseca, arXiv Jun 2026) | GMVP regret depends only on covariance error projected onto portfolio weight direction; standard matrix-norm estimators suboptimal under heavy tails (κ ∈ (2,4)); Tyler M-estimator decision-optimal | Medium — justifies replacing rolling std with MAD in low_vol.py; Signal #34; Priority 2 |
+| [max-beta-lottery-stocks-2026](papers/max-beta-lottery-stocks-2026.md) | MAX on Steroids: A New Measure of Investor Attraction to Lottery Stocks (Bali, Ince, Ozsoylev, SSRN Jan 2026) | MAXβ (MAX purged of systematic return) yields stronger and more robust abnormal return L/S spread than total MAX; retail-dominated stocks: high MAXβ underperforms; independent of past return persistence | High — upgrades Signal #24 MAX filter from total MAX to idiosyncratic MAXβ; more precise lottery-stock exclusion for Chinese retail-dominated universe; Priority 3 |
 
 ---
 
