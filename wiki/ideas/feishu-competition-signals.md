@@ -1045,6 +1045,88 @@ def apply_low_turnover_filter(eligible_df, quantile=0.75):
 
 ---
 
+### 35. Tradability-Masked Rolling Vol (replaces raw rolling std in low_vol.py)
+**Source:** [[limit-move-bias-correction-chinese-factor-2025]]  
+**Idea:** When computing the 60-day rolling standard deviation for stock ranking in `low_vol.py`, exclude days where the stock hit its ±10% price limit. These are non-executable closing prices (the administrative ceiling/floor, not a market-clearing price) and inflate the vol estimate for stocks that had occasional limit moves within the window. Du (2025/2026) shows this "upstream contamination" inflates IC by 18% and reduces Sharpe by 0.44 in Chinese A-share factor pipelines.
+
+```python
+import numpy as np
+
+def tradability_masked_std(return_series, window=60, limit_threshold=0.099):
+    """
+    Rolling std computed only over tradable (non-limit-move) days.
+    Days where |return| >= limit_threshold are excluded from each window.
+    """
+    masked = return_series.where(return_series.abs() < limit_threshold)
+    return masked.rolling(window, min_periods=10).std()
+
+# Drop-in replacement in low_vol.py:
+# OLD: daily['vol_60d'] = daily.groupby('asset_id')['ret'].transform(
+#          lambda x: x.rolling(60).std()
+#      )
+# NEW:
+daily['vol_60d'] = daily.groupby('asset_id')['ret'].transform(
+    lambda x: tradability_masked_std(x, window=60)
+)
+```
+
+**Complements Signal #34 (MAD vol):** Signal #34 uses MAD to downweight outliers within the window; Signal #35 excludes limit-move days entirely. Combining both (mask then MAD) gives the cleanest vol estimate. Either alone is an improvement over plain rolling std.
+
+**Expected benefit:** Stocks that hit a single ±10% limit day within the 60-day window no longer have their vol ranking artificially inflated by that day. Ranking better reflects the stock's normal-day behaviour. Most impactful on stocks near the eligibility boundary (marginally filtered in/out by the current ranking).  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
+### 36. Dual-EMA (MACD-Style) Trend Filter
+**Source:** [[fast-slow-latent-drift-macd-portfolio-2026]]  
+**Idea:** Replace the single 35-day return threshold in `trend_vol_v4.py` with a MACD-type filter: `EMA(5) > EMA(35)`. Eccles & Lee (arXiv:2607.01705, Jul 2026) prove that MACD is the provably optimal partial-information estimator of the persistent (slow OU) component of drift when drift is decomposed into two OU scales. This provides rigorous mathematical grounding for what was previously a heuristic trend filter.
+
+```python
+import pandas as pd
+import numpy as np
+
+def dual_ema_trend_filter(adj_close_series, fast_span=5, slow_span=35, tolerance=-0.001):
+    """
+    MACD-style trend filter.
+    Returns True (tradable) if EMA(fast) > EMA(slow) × (1 + tolerance).
+    Replaces: close[-1]/close[-35] - 1 > -0.025 in trend_vol_v4.
+    """
+    ema_fast = adj_close_series.ewm(span=fast_span, adjust=False).mean()
+    ema_slow = adj_close_series.ewm(span=slow_span, adjust=False).mean()
+    normalised_macd = (ema_fast - ema_slow) / (ema_slow + 1e-8)
+    return normalised_macd > tolerance
+
+# Usage in trend_vol_v4 selection loop:
+# per-asset, using history up to current day t:
+def apply_macd_filter(daily, trade_day, fast_span=5, slow_span=35, tolerance=-0.001):
+    history = daily[daily['trade_day_id'] <= trade_day].copy()
+    history['adj_close'] = history['close'] * history['adj_factor']
+    ema_fast = history.groupby('asset_id')['adj_close'].transform(
+        lambda x: x.ewm(span=fast_span, adjust=False).mean()
+    )
+    ema_slow = history.groupby('asset_id')['adj_close'].transform(
+        lambda x: x.ewm(span=slow_span, adjust=False).mean()
+    )
+    latest = history[history['trade_day_id'] == trade_day].copy()
+    latest = latest.assign(
+        ema_fast=ema_fast[history['trade_day_id'] == trade_day].values,
+        ema_slow=ema_slow[history['trade_day_id'] == trade_day].values
+    )
+    latest['macd_norm'] = (latest['ema_fast'] - latest['ema_slow']) / (latest['ema_slow'] + 1e-8)
+    return latest[latest['macd_norm'] > tolerance]
+```
+
+**Advantage over single 35d return:**
+- EMA is exponentially weighted → less sensitive to a single large-move day at the 35d boundary
+- Dual-EMA separates short-term noise (fast EMA) from persistent trend (slow EMA) — exactly what the theoretical model optimally extracts
+- More robust: the MACD ratio doesn't jump discontinuously when a limit-move day rolls out of the window
+- Smoother threshold transitions → less intraday whipsawing on regime-boundary days
+
+**Parameters to sweep:** fast_span ∈ {3, 5, 7}; slow_span ∈ {20, 35, 50}; tolerance ∈ {-0.002, -0.001, 0.0}. The (5, 35, -0.001) configuration maps approximately to the current (threshold=-0.025, 35d return) filter.  
+**Status:** `[ ] post-competition refinement — do not test on IS data`
+
+---
+
 ### 34. Robust MAD Vol Estimation (replaces rolling std in low_vol.py)
 **Source:** [[gmvp-decision-geometry-heavy-tails-2026]]  
 **Idea:** Replace the 60-day rolling standard deviation in `low_vol.py` with a Median Absolute Deviation (MAD × 1.4826) estimator. Fonseca (2026) proves that standard matrix-norm-minimising covariance estimators (including sample covariance) are suboptimal for GMVP decision quality under heavy-tailed returns (tail index κ ∈ (2,4)). Chinese A-share daily returns have fat tails — particularly from ±10% limit days — which inflate sample std for stocks that hit a single limit, making them appear riskier than they are over the remainder of the window. MAD is resistant to single outlier events.
