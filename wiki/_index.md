@@ -2,8 +2,8 @@
 
 Knowledge base for the Feishu/Lark Quant Competition. All content written and maintained by Claude. Do not edit directly.
 
-**Last updated:** 2026-07-08  
-**Papers indexed:** 40  
+**Last updated:** 2026-07-15  
+**Papers indexed:** 41  
 **Concepts:** 7  
 **Ideas:** 34 signals catalogued, 24 implemented  
 **Current best (IS):** `trend_vol_v4` Score=0.4024 (CAGR=11.75%, SR=1.207, MDD=7.98%)  
@@ -58,6 +58,7 @@ Knowledge base for the Feishu/Lark Quant Competition. All content written and ma
 | [limit-move-bias-correction-chinese-factor-2025](papers/limit-move-bias-correction-chinese-factor-2025.md) | Machine Learning Enhanced Multi-Factor Quantitative Trading: A Cross-Sectional Portfolio Optimization Approach with Bias Correction (Du, arXiv Jun 2025 / updated May 2026) | "Upstream contamination" from ±10% limit-move days inflates IC by 18% and reduces realised Sharpe by 0.44 points; Boolean tradability mask fixes this; Sharpe 1.63 (real 2022–2024), 2.05 (synthetic) | High — directly applies to our low_vol.py rolling std computation; limit-move days in the 60d window inflate vol estimates for stocks with occasional limit moves; Signal #35 (tradability-masked vol); Priority 3 |
 | [fast-slow-latent-drift-macd-portfolio-2026](papers/fast-slow-latent-drift-macd-portfolio-2026.md) | Portfolio Optimization under Fast and Slow Latent Mean-Reverting and Momentum Drift (Eccles & Lee, arXiv Jul 2026) | MACD (fast EMA minus slow EMA) is the provably optimal partial-information estimator of two-scale latent drift under power/log/exponential utility; Volterra correction accounts for information uncertainty | Medium — theoretical justification for replacing single 35d return threshold with dual-EMA (MACD-style) trend filter in trend_vol_v4; smoother signal, less sensitive to boundary limit-move days; Signal #36; Priority 3 |
 | [trend-demise-microstructure-futures-2026](papers/trend-demise-microstructure-futures-2026.md) | Is Trend Still Your Friend? A Microstructural Account of the Demise of Short-Term Trend-Following (Kurth, Eisler, Rej, Bouchaud, CFM, arXiv Jul 2026) | Short-term trend-following in futures degraded post-2009 for small-tick (liquid) contracts; volatility-normalised tick size is the key cross-sectional predictor; long-horizon (35d+) trends and large-tick (friction-rich) markets retain alpha | Medium — validates our 35-day trend filter in Chinese A-shares (T+1, ±10% limits, retail dominance = functional large-tick friction); confirms trend signals persist in our operating regime; no new signal |
+| [what-useful-alphas-2026](papers/what-useful-alphas-2026.md) | What Useful Alphas? (Chen & Welch, arXiv Jul 2026) | ~200 published anomaly portfolios; post-2005, non-micro-cap median return 7 bp/month → zero after costs; published anomalies useless for large/mid-cap managers since 2006 | High — closes the investigation path of adding generic published factor screens to low-vol; validates structural (friction-grounded) signals only; Priority 3 |
 
 ---
 
@@ -206,6 +207,16 @@ XGBoost return prediction uses vol forecasts + regime indicators as features
 Extends our simple 60d rolling std: regime-conditional vol distinguishes
 "temporarily elevated vol" from "structurally high vol"
 Signal #31: regime-augmented vol for low_vol.py stock ranking
+
+What Useful Alphas? (Chen & Welch, arXiv:2607.06502, Jul 2026)
+    ↓
+~200 published long-short anomaly portfolios; post-2005, non-micro-cap: 7bp/month
+→ Published academic anomalies useless for large/mid-cap managers since 2006
+    ↓
+Consistent with Li et al. (Mgmt Science, 2024): 83.37% of Chinese anomalies fail
+    ↓
+Rule: only add friction-grounded structural signals to low-vol universe;
+      generic published factor screens (value, quality, profitability) add zero value
 ```
 
 ---
