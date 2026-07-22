@@ -6,6 +6,16 @@ Running log of findings from experiments. Each entry is either a **confirmed fac
 
 ## Confirmed Facts
 
+### China A-share market structure changes effective 2026-07-06 (post-OOS)
+
+Three trading rule changes took effect across Shanghai, Shenzhen, and Beijing exchanges on 6 July 2026 — after our OOS period (D485–D726 data released 2026-05-28) and therefore no impact on competition results:
+
+1. **After-hours fixed-price trading expanded to all A-shares** (15:05–15:30 at the closing price). Previously limited to SSE 50 / CSI 300 / CSI 500 constituents and selected ETFs. New low-friction sell-at-close execution window.
+2. **ST / \*ST price limits widened ±5% → ±10%**: Risk-warning stocks now have same daily limit as ordinary shares. Our strategy excludes illiquid/distressed stocks so operational impact is minimal.
+3. **Fund closing mechanism → closing call auction**: Final 3 minutes of the session are a non-cancellable auction; public funds price off auction close. Reduces adverse selection at the close for institutional-sized sell orders.
+
+**Implication for future work**: The call auction change (item 3) partially closes the sell-at-open vs. sell-at-close gap observed in IS data (Score 0.4024 vs. ~0.39). If a future OOS period falls entirely within this new regime, re-evaluating sell-at-close mode is warranted.
+
 ### Competition submission filed — T016_sell_open.csv submitted 2026-06-01 02:17 Beijing (9h 41min early)
 Team ID = T016. Uploaded `T016_sell_open.csv` (copy of `submission_v4_sell_open.csv`). Platform confirms: attempt 1/3, status "Submitted for grading". 2 resubmission attempts remain before the 12:00 deadline if needed.
 
@@ -173,7 +183,7 @@ Updated 2026-04-21. Current best: `trend_vol_v4` Score=0.4024. IS parameter spac
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-05-27. **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk and OOS strategy robustness.
+Updated 2026-05-27; search-priority section reconfirmed unchanged through five weekly searches (2026-06-10 through 2026-07-22 — all returned zero new papers). **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk and OOS strategy robustness.
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless
@@ -198,6 +208,7 @@ Updated 2026-05-27. **Current best:** `trend_vol_v4` (Score=0.4024). IS paramete
 - MACD / dual-EMA trend signal derivation — covered by Eccles & Lee (arXiv:2607.01705, Jul 2026, indexed); Signal #36
 - Trend-following demise microstructure / tick-size mechanism — covered by Kurth, Eisler, Rej & Bouchaud (arXiv:2607.01550, Jul 2026, indexed)
 - Generic published anomaly factor decay / publication bias — covered by Chen & Welch (arXiv:2607.06502, Jul 2026, indexed); confirms no value in adding generic published screens to low-vol universe
+- China A-share market microstructure rule changes (2026) — July 6 changes documented in Confirmed Facts above and in `wiki/logs/2026-07-22-paper-search.md`; no academic literature on this yet; post-OOS, not actionable
 
 **Priority 1 — Bull-market resilience (FURTHER ADDRESSED)**
 Soebhag et al. (2025) confirm the long leg is robust. Shu & Mulvey (2025) provide the SJM regime detector. Kercheval & Sowunmi (Apr 2026, arXiv:2604.09986) now provide the **formal theoretical proof**: when market betas are all positive (bull environment), the unconstrained LOMV active ratio → 0 (extreme concentration). This formally justifies our N=30 expansion in v5 — without the minimum-N constraint, the portfolio would shrink to ≈ 5 stocks in a bull regime.
