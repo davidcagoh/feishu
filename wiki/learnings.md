@@ -183,7 +183,7 @@ Updated 2026-04-21. Current best: `trend_vol_v4` Score=0.4024. IS parameter spac
 
 ## What the Next Paper Search Should Prioritise
 
-Updated 2026-05-27; search-priority section reconfirmed unchanged through five weekly searches (2026-06-10 through 2026-07-22 — all returned zero new papers). **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk and OOS strategy robustness.
+Updated 2026-05-27; search-priority section reconfirmed unchanged through six weekly searches (2026-06-10 through 2026-07-29 — all returned zero new papers). **Current best:** `trend_vol_v4` (Score=0.4024). IS parameter space exhausted — no further tuning warranted. Paper search should focus solely on OOS regime risk and OOS strategy robustness.
 
 **Do NOT search for:**
 - LOB imbalance signals, order flow, microstructure — IC-based, execution gap makes them useless
